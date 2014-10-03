@@ -1,0 +1,13 @@
+[
+	{
+		"FallbackProtocol": "telnet",
+		"ListenerAddress": ":1337",
+		"ProtocolDiscoveryTimeout": 3,
+		"ProtocolHosts": {
+			"https": "1.2.3.4:443",
+			"http": "1.2.3.4:80",
+			"ssh": "1.2.3.4:22",
+			"telnet": "1.2.3.4:23"
+		}
+	}
+]

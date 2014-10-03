@@ -1,0 +1,14 @@
+{
+	"http": {
+		"type": "line_regex",
+		"value": "^[A-Za-z]+ /[^ ]* HTTP/[0-9.]+$"
+	},
+	"https": {
+		"type": "raw_bytes",
+		"value": [22, 3, -1, -1, -1, 1]
+	},
+	"ssh": {
+		"type": "raw_string",
+		"value": "SSH-2.0-"
+	}
+}
