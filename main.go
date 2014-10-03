@@ -182,18 +182,9 @@ func (p *ProxyListener) handleConnection(client *net.TCPConn) {
 		log.Printf("Found protocol: %v", protocol)
 	}
 	
-	var addrStr string
-	var ok bool
-	if addrStr, ok = p.ProtocolHosts[protocol]; !ok {
-		log.Printf("No handler for protocol %v defined. Disconnecting.", protocol)
-		client.Close()
-		return
-	}
-	
-	
-	addr, err := net.ResolveTCPAddr("tcp", addrStr)
+	addr, err := net.ResolveTCPAddr("tcp", p.ProtocolHosts[protocol])
 	if err != nil {
-		log.Printf("Protocol error (%v): %v", addrStr, err)
+		log.Printf("Protocol error (%v): %v", p.ProtocolHosts[protocol], err)
 		client.Close()
 		return
 	}
