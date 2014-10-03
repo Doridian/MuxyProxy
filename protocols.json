@@ -1,7 +1,7 @@
 {
 	"http": {
 		"type": "line_regex",
-		"value": "^[A-Za-z]+ /[^ ]* HTTP/[0-9.]+$"
+		"value": "(?i)^[A-Z]+ /[^ ]* HTTP/[0-9.]+$"
 	},
 	"https": {
 		"type": "raw_bytes",
@@ -13,6 +13,6 @@
 	},
 	"irc": {
 		"type": "line_regex",
-		"value": "(?i)^(user|nick) "
+		"value": "(?i)^(user |nick) "
 	}		
 }
