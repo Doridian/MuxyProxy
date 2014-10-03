@@ -85,11 +85,40 @@ type ProxyListener struct {
 	FallbackProtocol string
 	ListenerAddress string
 	ProtocolDiscoveryTimeout float64
+	
 	protocolDiscoveryTimeoutReal time.Duration
+	lineProtocolsRegexp map[string]*regexp.Regexp
+	lineProtocolsLiteral map[string][]int
+	rawProtocolsRegexp map[string]*regexp.Regexp
+	rawProtocolsLiteral map[string][]int
 }
 
 func (p *ProxyListener) Start() {
 	p.protocolDiscoveryTimeoutReal = time.Duration(p.ProtocolDiscoveryTimeout) * time.Second
+
+	p.lineProtocolsRegexp = make(map[string]*regexp.Regexp)
+	p.lineProtocolsLiteral = make(map[string][]int)
+	p.rawProtocolsRegexp = make(map[string]*regexp.Regexp)
+	p.rawProtocolsLiteral = make(map[string][]int)
+	
+	for protocol, _ := range p.ProtocolHosts {
+		a, ok := LINE_PROTOCOLS_REGEXP[protocol]
+		if ok {
+			p.lineProtocolsRegexp[protocol] = a
+		}
+		b,ok := LINE_PROTOCOLS_LITERAL[protocol]
+		if ok {
+			p.lineProtocolsLiteral[protocol] = b
+		}
+		c, ok := RAW_PROTOCOLS_REGEXP[protocol]
+		if ok {
+			p.rawProtocolsRegexp[protocol] = c
+		}
+		d, ok := RAW_PROTOCOLS_LITERAL[protocol]
+		if ok {
+			p.rawProtocolsLiteral[protocol] = d
+		}
+	}
 
 	listenerAddr, err := net.ResolveTCPAddr("tcp", p.ListenerAddress)
 	if err != nil {
@@ -185,8 +214,9 @@ func (p *ProxyListener) handleConnection(client *net.TCPConn) {
 	go io.Copy(client, server)
 }
 
-func whichProtocolIs(data []byte) *string {
-	if len(data)  < 1 {
+func (p *ProxyListener) whichProtocolIs(data []byte) *string {
+	dataLen := len(data)
+	if dataLen  < 1 {
 		return nil
 	}
 
@@ -209,8 +239,9 @@ func whichProtocolIs(data []byte) *string {
 	}
 	
 	if hasNewline {
-		for protocol,literal := range LINE_PROTOCOLS_LITERAL {
-			if len(firstLine) < len(literal) {
+		dataLen = len(firstLine)
+		for protocol,literal := range p.lineProtocolsLiteral {
+			if dataLen < len(literal) {
 				continue
 			}
 			literalIsValid := true
@@ -224,15 +255,15 @@ func whichProtocolIs(data []byte) *string {
 				return &protocol
 			}
 		}
-		for protocol,regexp := range LINE_PROTOCOLS_REGEXP {
+		for protocol,regexp := range p.lineProtocolsRegexp {
 			if regexp.Match(firstLine) {
 				return &protocol
 			}
 		}
 	}
 	
-	for protocol,literal := range RAW_PROTOCOLS_LITERAL {
-		if len(data) < len(literal) {
+	for protocol,literal := range p.rawProtocolsLiteral {
+		if dataLen < len(literal) {
 			continue
 		}
 		literalIsValid := true
@@ -246,7 +277,7 @@ func whichProtocolIs(data []byte) *string {
 			return &protocol
 		}
 	}
-	for protocol,regexp := range RAW_PROTOCOLS_REGEXP {
+	for protocol,regexp := range p.rawProtocolsRegexp {
 		if regexp.Match(data) {
 			return &protocol
 		}
@@ -270,13 +301,13 @@ func (p *ProxyListener) connectionDiscoverProtocol(conn *net.TCPConn) (*string, 
 			break
 		}
 		pos += readLen
-		foundProtocol = whichProtocolIs(buff[0:pos])
+		foundProtocol = p.whichProtocolIs(buff[0:pos])
 		if foundProtocol != nil {
 			return foundProtocol, buff[0:pos]
 		}
 	}
 	
-	foundProtocol = whichProtocolIs(buff[0:pos])
+	foundProtocol = p.whichProtocolIs(buff[0:pos])
 	
 	if foundProtocol == nil {
 		if _DEBUG {
