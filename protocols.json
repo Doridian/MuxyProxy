@@ -10,5 +10,9 @@
 	"ssh": {
 		"type": "raw_string",
 		"value": "SSH-2.0-"
-	}
+	},
+	"irc": {
+		"type": "line_regex",
+		"value": "(?i)^(user|nick) "
+	}		
 }

@@ -15,6 +15,8 @@ var LINE_PROTOCOLS_LITERAL = make(map[string][]int)
 var RAW_PROTOCOLS_REGEXP = make(map[string]*regexp.Regexp)
 var RAW_PROTOCOLS_LITERAL = make(map[string][]int)
 
+var _DEBUG = true
+
 func literalMatchFromString(str string) []int {
 	ret := make([]int, len(str))
 	for i,c := range str {
@@ -140,6 +142,11 @@ func loadListenerConfig() {
 func (p *ProxyListener) handleConnection(client *net.TCPConn) {
 	protocol, headBytes := p.connectionDiscoverProtocol(client)
 	
+	if _DEBUG {
+		log.Printf("Found protocol: %v", protocol)
+	}
+	
+	
 	addr, err := net.ResolveTCPAddr("tcp", p.ProtocolHosts[protocol])
 	if err != nil {
 		log.Panicf("Protocol error (%v): %v", p.ProtocolHosts[protocol], err)
@@ -253,8 +260,10 @@ func (p *ProxyListener) connectionDiscoverProtocol(conn *net.TCPConn) (string, [
 	foundProtocol = whichProtocolIs(buff[0:pos])
 	
 	if foundProtocol == "" {
-		//log.Printf("UN P B: %x %x %x %x %x %x %x", buff[0], buff[1], buff[2], buff[3], buff[4], buff[5], buff[6])
-		//log.Printf("UN P S: %s", buff[0:pos])
+		if _DEBUG {
+			log.Printf("UN P B: %x %x %x %x %x %x %x", buff[0], buff[1], buff[2], buff[3], buff[4], buff[5], buff[6])
+			log.Printf("UN P S: %s", buff[0:pos])
+		}
 		return p.FallbackProtocol, buff[0:pos]
 	}
 
