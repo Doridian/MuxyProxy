@@ -140,23 +140,42 @@ func loadListenerConfig() {
 }
 
 func (p *ProxyListener) handleConnection(client *net.TCPConn) {
-	protocol, headBytes := p.connectionDiscoverProtocol(client)
+	protocolPtr, headBytes := p.connectionDiscoverProtocol(client)
+	
+	var protocol string
+	if protocolPtr == nil {
+		protocol = p.FallbackProtocol
+	} else {
+		protocol = *protocolPtr
+	}
 	
 	if _DEBUG {
 		log.Printf("Found protocol: %v", protocol)
 	}
 	
-	
-	addr, err := net.ResolveTCPAddr("tcp", p.ProtocolHosts[protocol])
-	if err != nil {
-		log.Panicf("Protocol error (%v): %v", p.ProtocolHosts[protocol], err)
+	var addrStr string
+	var ok bool
+	if addrStr, ok = p.ProtocolHosts[protocol]; !ok {
+		log.Printf("No handler for protocol %v defined. Disconnecting.", protocol)
+		client.Close()
+		return
 	}
+	
+	
+	addr, err := net.ResolveTCPAddr("tcp", addrStr)
+	if err != nil {
+		log.Printf("Protocol error (%v): %v", addrStr, err)
+		client.Close()
+		return
+	}
+	
 	server, err := net.DialTCP("tcp", nil, addr)
 	if err != nil {
 		log.Printf("Error establishing backend connection for protocol %s: %v", protocol, err)
 		client.Close()
 		return
 	}
+	
 	server.SetNoDelay(true)
 	client.SetNoDelay(true)
 	
@@ -166,9 +185,9 @@ func (p *ProxyListener) handleConnection(client *net.TCPConn) {
 	go io.Copy(client, server)
 }
 
-func whichProtocolIs(data []byte) string {
+func whichProtocolIs(data []byte) *string {
 	if len(data)  < 1 {
-		return ""
+		return nil
 	}
 
 	hasNewline := false
@@ -202,12 +221,12 @@ func whichProtocolIs(data []byte) string {
 				}
 			}
 			if literalIsValid {
-				return protocol
+				return &protocol
 			}
 		}
 		for protocol,regexp := range LINE_PROTOCOLS_REGEXP {
 			if regexp.Match(firstLine) {
-				return protocol
+				return &protocol
 			}
 		}
 	}
@@ -224,26 +243,26 @@ func whichProtocolIs(data []byte) string {
 			}
 		}
 		if literalIsValid {
-			return protocol
+			return &protocol
 		}
 	}
 	for protocol,regexp := range RAW_PROTOCOLS_REGEXP {
 		if regexp.Match(data) {
-			return protocol
+			return &protocol
 		}
 	}
 	
-	return ""
+	return nil
 }
 
-func (p *ProxyListener) connectionDiscoverProtocol(conn *net.TCPConn) (string, []byte) {
+func (p *ProxyListener) connectionDiscoverProtocol(conn *net.TCPConn) (*string, []byte) {
 	conn.SetNoDelay(true)
 	defer conn.SetNoDelay(false)
 	defer conn.SetDeadline(time.Unix(0, 0))
 	
 	buff := make([]byte, 128)
 	pos := 0
-	var foundProtocol string
+	var foundProtocol *string
 	for {
 		conn.SetDeadline(time.Now().Add(p.protocolDiscoveryTimeoutReal))
 		readLen, err := conn.Read(buff[pos:])
@@ -252,19 +271,19 @@ func (p *ProxyListener) connectionDiscoverProtocol(conn *net.TCPConn) (string, [
 		}
 		pos += readLen
 		foundProtocol = whichProtocolIs(buff[0:pos])
-		if foundProtocol != "" {
+		if foundProtocol != nil {
 			return foundProtocol, buff[0:pos]
 		}
 	}
 	
 	foundProtocol = whichProtocolIs(buff[0:pos])
 	
-	if foundProtocol == "" {
+	if foundProtocol == nil {
 		if _DEBUG {
 			log.Printf("UN P B: %x %x %x %x %x %x %x", buff[0], buff[1], buff[2], buff[3], buff[4], buff[5], buff[6])
 			log.Printf("UN P S: %s", buff[0:pos])
 		}
-		return p.FallbackProtocol, buff[0:pos]
+		return nil, buff[0:pos]
 	}
 
 	return foundProtocol, buff[0:pos]
