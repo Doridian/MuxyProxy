@@ -25,7 +25,7 @@
 		},
 		"ProtocolHosts": {
 			"http": {"protocol": "tcp", "tls": true, "host": "1.2.3.4:443"},
-			"ssh": {"type": "tcp", "host": "1.2.3.4:22"},
+			"ssh": {"protocol": "tcp", "host": "1.2.3.4:22"},
 			"telnet": {"protocol": "tcp", "host": "1.2.3.4:23"}
 		}
 	}
