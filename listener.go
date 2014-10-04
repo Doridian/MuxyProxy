@@ -148,7 +148,7 @@ func (p *ProxyListener) Start() {
 		return
 	}
 	
-	log.Printf("[L#%d] Started listening on %v://%v (TLS: %t)", listenerID, p.ListenerProtocol, p.ListenerAddress, p.Tls != nil)
+	log.Printf("[L#%d] Started listening on %s://%s (TLS: %t)", listenerID, p.ListenerProtocol, p.ListenerAddress, p.Tls != nil)
 	defer log.Printf("[L#%d] Stopped listener", listenerID)
 	
 	var tlsConfig *tls.Config
