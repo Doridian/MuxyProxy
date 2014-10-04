@@ -13,31 +13,20 @@ import (
 
 type ProxyListenerConfig struct {
 	Debug bool
-
 	Listeners []ProxyListener	
-	
 	config *ProxyProtocolConfig
 }
 
-type ProxyListener struct {
-	Debug bool
-
+type proxyListenerJSON struct {
 	ProtocolHosts map[string]struct {
 		Host string
 		Type string
 	}
+	
 	FallbackProtocol string
 	ListenerAddress string
 	Tls *[]ProxyTlsConfig
 	ProtocolDiscoveryTimeout float64
-	
-	protocolDiscoveryTimeoutReal time.Duration
-	lineProtocolsRegexp map[string]*regexp.Regexp
-	lineProtocolsLiteral map[string][]int
-	rawProtocolsRegexp map[string]*regexp.Regexp
-	rawProtocolsLiteral map[string][]int
-	
-	config *ProxyProtocolConfig
 }
 
 type ProxyTlsConfig struct {
@@ -46,15 +35,32 @@ type ProxyTlsConfig struct {
 	PrivateKey string
 }
 
+type ProxyListener struct {
+	Debug bool
+
+	FallbackProtocol string
+	ListenerAddress string
+
+	Tls *[]ProxyTlsConfig
+	
+	ProtocolHosts map[string]struct {
+		Host string
+		Type string
+	}
+	
+	ProtocolDiscoveryTimeout time.Duration
+	config *ProxyProtocolConfig
+}
+
 func LoadListeners(file string, config *ProxyProtocolConfig, debug bool) *ProxyListenerConfig {
-	c := new(ProxyListenerConfig)
+	var cJSON []proxyListenerJSON
 	
 	fileReader, err := os.Open(file)
 	if err != nil {
 		log.Panicf("Load CListeners: open err: %v", err)
 	}	
 	jsonReader := json.NewDecoder(fileReader)
-	err = jsonReader.Decode(&c.Listeners)
+	err = jsonReader.Decode(&cJSON)
 	fileReader.Close()
 	if err != nil {
 		log.Panicf("Load CListeners: json err: %v", err)
@@ -62,6 +68,42 @@ func LoadListeners(file string, config *ProxyProtocolConfig, debug bool) *ProxyL
 	
 	log.Println("Load CListeners: OK")
 	
+	c := new(ProxyListenerConfig)
+	c.Listeners = make([]ProxyListener, len(cJSON))
+	for i, cJSONSingle := range cJSON {
+		cListener := &c.Listeners[i]
+		cListener.Debug = debug
+		cListener.Tls = cJSONSingle.Tls
+		cListener.FallbackProtocol = cJSONSingle.FallbackProtocol
+		cListener.ListenerAddress = cJSONSingle.ListenerAddress
+		cListener.ProtocolHosts = cJSONSingle.ProtocolHosts
+		cListener.ProtocolDiscoveryTimeout = time.Duration(cJSONSingle.ProtocolDiscoveryTimeout) * time.Second
+		cListener.config = new(ProxyProtocolConfig)
+		
+		cListener.config.LINE_PROTOCOLS_REGEXP = make(map[string]*regexp.Regexp)
+		cListener.config.LINE_PROTOCOLS_LITERAL = make(map[string][]int)
+		cListener.config.RAW_PROTOCOLS_REGEXP = make(map[string]*regexp.Regexp)
+		cListener.config.RAW_PROTOCOLS_LITERAL = make(map[string][]int)
+		
+		for protocol, _ := range cJSONSingle.ProtocolHosts {
+			a, ok := config.LINE_PROTOCOLS_REGEXP[protocol]
+			if ok {
+				cListener.config.LINE_PROTOCOLS_REGEXP[protocol] = a
+			}
+			b,ok := config.LINE_PROTOCOLS_LITERAL[protocol]
+			if ok {
+				cListener.config.LINE_PROTOCOLS_LITERAL[protocol] = b
+			}
+			c, ok := config.RAW_PROTOCOLS_REGEXP[protocol]
+			if ok {
+				cListener.config.RAW_PROTOCOLS_REGEXP[protocol] = c
+			}
+			d, ok := config.RAW_PROTOCOLS_LITERAL[protocol]
+			if ok {
+				cListener.config.RAW_PROTOCOLS_LITERAL[protocol] = d
+			}
+		}
+	}
 	c.config = config
 	c.Debug = debug
 	
@@ -70,40 +112,11 @@ func LoadListeners(file string, config *ProxyProtocolConfig, debug bool) *ProxyL
 
 func (c *ProxyListenerConfig) Start() {
 	for _,listener := range c.Listeners {
-		go listener.Start(c.config, c.Debug)
+		go listener.Start()
 	}
 }
 
-func (p *ProxyListener) Start(config *ProxyProtocolConfig, debug bool) {
-	p.config = config
-	p.Debug = debug
-	
-	p.protocolDiscoveryTimeoutReal = time.Duration(p.ProtocolDiscoveryTimeout) * time.Second
-
-	p.lineProtocolsRegexp = make(map[string]*regexp.Regexp)
-	p.lineProtocolsLiteral = make(map[string][]int)
-	p.rawProtocolsRegexp = make(map[string]*regexp.Regexp)
-	p.rawProtocolsLiteral = make(map[string][]int)
-	
-	for protocol, _ := range p.ProtocolHosts {
-		a, ok := p.config.LINE_PROTOCOLS_REGEXP[protocol]
-		if ok {
-			p.lineProtocolsRegexp[protocol] = a
-		}
-		b,ok := p.config.LINE_PROTOCOLS_LITERAL[protocol]
-		if ok {
-			p.lineProtocolsLiteral[protocol] = b
-		}
-		c, ok := p.config.RAW_PROTOCOLS_REGEXP[protocol]
-		if ok {
-			p.rawProtocolsRegexp[protocol] = c
-		}
-		d, ok := p.config.RAW_PROTOCOLS_LITERAL[protocol]
-		if ok {
-			p.rawProtocolsLiteral[protocol] = d
-		}
-	}
-
+func (p *ProxyListener) Start() {
 	listenerAddr, err := net.ResolveTCPAddr("tcp", p.ListenerAddress)
 	if err != nil {
 		log.Printf("Could not resolve listener: %v", err)
@@ -171,7 +184,6 @@ func (p *ProxyListener) handleConnection(client net.Conn) {
 		return
 	}
 	
-	
 	switch protocolHost.Type {
 		case "ssl": {
 			var _server *net.TCPConn
@@ -230,7 +242,7 @@ func (p *ProxyListener) whichProtocolIs(data []byte) *string {
 	
 	if hasNewline {
 		dataLen = len(firstLine)
-		for protocol,literal := range p.lineProtocolsLiteral {
+		for protocol,literal := range p.config.LINE_PROTOCOLS_LITERAL {
 			if dataLen < len(literal) {
 				continue
 			}
@@ -245,14 +257,14 @@ func (p *ProxyListener) whichProtocolIs(data []byte) *string {
 				return &protocol
 			}
 		}
-		for protocol,regexp := range p.lineProtocolsRegexp {
+		for protocol,regexp := range p.config.LINE_PROTOCOLS_REGEXP {
 			if regexp.Match(firstLine) {
 				return &protocol
 			}
 		}
 	}
 	
-	for protocol,literal := range p.rawProtocolsLiteral {
+	for protocol,literal := range p.config.RAW_PROTOCOLS_LITERAL {
 		if dataLen < len(literal) {
 			continue
 		}
@@ -267,7 +279,7 @@ func (p *ProxyListener) whichProtocolIs(data []byte) *string {
 			return &protocol
 		}
 	}
-	for protocol,regexp := range p.rawProtocolsRegexp {
+	for protocol,regexp := range p.config.RAW_PROTOCOLS_REGEXP {
 		if regexp.Match(data) {
 			return &protocol
 		}
@@ -283,7 +295,7 @@ func (p *ProxyListener) connectionDiscoverProtocol(conn net.Conn) (*string, []by
 	pos := 0
 	var foundProtocol *string
 	for {
-		conn.SetDeadline(time.Now().Add(p.protocolDiscoveryTimeoutReal))
+		conn.SetDeadline(time.Now().Add(p.ProtocolDiscoveryTimeout))
 		readLen, err := conn.Read(buff[pos:])
 		if err != nil || readLen <= 0 {
 			break
