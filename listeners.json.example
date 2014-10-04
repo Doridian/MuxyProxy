@@ -2,17 +2,19 @@
 	{
 		"FallbackProtocol": "telnet",
 		"ListenerAddress": ":1337",
+		"ListenerProtocol": "tcp",
 		"ProtocolDiscoveryTimeout": 3,
 		"ProtocolHosts": {
-			"ssl": {"type": "tcp", "host": "127.0.0.1:1338"},
-			"http": {"type": "tcp", "host": "1.2.3.4:80"},
-			"ssh": {"type": "tcp", "host": "1.2.3.4:22"},
-			"telnet": {"type": "tcp", "host": "1.2.3.4:23"}
+			"ssl": {"protocol": "tcp", "host": "127.0.0.1:1338"},
+			"http": {"protocol": "tcp", "host": "1.2.3.4:80"},
+			"ssh": {"protocol": "tcp", "host": "1.2.3.4:22"},
+			"telnet": {"protocol": "tcp", "host": "1.2.3.4:23"}
 		}
 	},
 	{
 		"FallbackProtocol": "telnet",
 		"ListenerAddress": "127.0.0.1:1338",
+		"ListenerProtocol": "tcp",
 		"ProtocolDiscoveryTimeout": 3,
 		"Tls": {
 			[
@@ -22,10 +24,9 @@
 			]
 		},
 		"ProtocolHosts": {
-			"ssl": {"type": "tcp", "host": "127.0.0.1:1338"},
-			"http": {"type": "tcp", "host": "1.2.3.4:80"},
+			"http": {"protocol": "tcp", "tls": true, "host": "1.2.3.4:443"},
 			"ssh": {"type": "tcp", "host": "1.2.3.4:22"},
-			"telnet": {"type": "tcp", "host": "1.2.3.4:23"}
+			"telnet": {"protocol": "tcp", "host": "1.2.3.4:23"}
 		}
 	}
 ]

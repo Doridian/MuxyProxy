@@ -22,11 +22,15 @@ type ProxyListenerConfig struct {
 type proxyListenerJSON struct {
 	ProtocolHosts map[string]struct {
 		Host string
-		Type string
+		Tls bool
+		Protocol string
 	}
 	
 	FallbackProtocol string
+	
 	ListenerAddress string
+	ListenerProtocol string
+	
 	Tls *[]ProxyTlsConfig
 	ProtocolDiscoveryTimeout float64
 }
@@ -39,13 +43,16 @@ type ProxyTlsConfig struct {
 
 type ProxyListener struct {
 	FallbackProtocol string
+	
 	ListenerAddress string
+	ListenerProtocol string
 
 	Tls *[]ProxyTlsConfig
 	
 	ProtocolHosts map[string]struct {
 		Host string
-		Type string
+		Tls bool
+		Protocol string
 	}
 	
 	ProtocolDiscoveryTimeout time.Duration
@@ -75,7 +82,9 @@ func LoadListeners(file string, config *ProxyProtocolConfig) *ProxyListenerConfi
 		cListener.Tls = cJSONSingle.Tls
 		cListener.FallbackProtocol = cJSONSingle.FallbackProtocol
 		cListener.ListenerAddress = cJSONSingle.ListenerAddress
+		cListener.ListenerProtocol = cJSONSingle.ListenerProtocol
 		cListener.ProtocolHosts = cJSONSingle.ProtocolHosts
+		
 		cListener.ProtocolDiscoveryTimeout = time.Duration(cJSONSingle.ProtocolDiscoveryTimeout) * time.Second
 		cListener.config = new(ProxyProtocolConfig)
 		
@@ -119,19 +128,27 @@ var listenerIDAtomic = new(uint64)
 func (p *ProxyListener) Start() {
 	listenerID := atomic.AddUint64(listenerIDAtomic, 1)
 
-	listenerAddr, err := net.ResolveTCPAddr("tcp", p.ListenerAddress)
-	if err != nil {
-		log.Printf("[L#%d] Could not resolve listener: %v", listenerID, err)
-		return
+	var listener net.Listener
+	var tcpListener *net.TCPListener
+	var err error
+	
+	if p.ListenerProtocol == "tcp" {
+		listenerAddr, err := net.ResolveTCPAddr("tcp", p.ListenerAddress)
+		if err != nil {
+			log.Printf("[L#%d] Could not resolve listener: %v", listenerID, err)
+			return
+		}
+		tcpListener, err = net.ListenTCP("tcp", listenerAddr)
+	} else {
+		listener, err = net.Listen(p.ListenerProtocol, p.ListenerAddress)
 	}
 	
-	listener, err := net.ListenTCP("tcp", listenerAddr)
 	if err != nil {
 		log.Printf("[L#%d] Could not listen: %v", listenerID, err)
 		return
 	}
 	
-	log.Printf("[L#%d] Started listening on tcp://%v", listenerID, listenerAddr)
+	log.Printf("[L#%d] Started listening on %v://%v (TLS: %t)", listenerID, p.ListenerProtocol, p.ListenerAddress, p.Tls != nil)
 	defer log.Printf("[L#%d] Stopped listener", listenerID)
 	
 	var tlsConfig *tls.Config
@@ -150,13 +167,22 @@ func (p *ProxyListener) Start() {
 	}
 	
 	for {
-		conn, err := listener.AcceptTCP()
+		var conn net.Conn
+		if tcpListener != nil {
+			var tcpConn *net.TCPConn
+			tcpConn, err = tcpListener.AcceptTCP()
+			if err == nil {
+				tcpConn.SetNoDelay(true)
+			}
+			conn = tcpConn
+		} else {
+			conn, err = listener.Accept()
+		}
 		if err != nil {
 			log.Printf("[L#%d] Accept error: %v", listenerID, err)
 			continue
 		}
 		
-		conn.SetNoDelay(true)
 		if tlsConfig != nil {
 			go p.handleConnection(listenerID, tls.Server(conn, tlsConfig))
 		} else {
@@ -188,7 +214,7 @@ func (p *ProxyListener) handleConnection(listenerID uint64, client net.Conn) {
 	}
 	
 	protocolHost := p.ProtocolHosts[protocol]
-	log.Printf("[L#%d] [C#%d] Connecting client to backend %s://%s", listenerID, connectionID, protocolHost.Type, protocolHost.Host)
+	log.Printf("[L#%d] [C#%d] Connecting client to backend %s://%s (TLS: %t)", listenerID, connectionID, protocolHost.Protocol, protocolHost.Host, protocolHost.Tls)
 	
 	var server net.Conn
 	var err error
@@ -199,24 +225,19 @@ func (p *ProxyListener) handleConnection(listenerID uint64, client net.Conn) {
 		return
 	}
 	
-	switch protocolHost.Type {
-		case "ssl": {
-			var _server *net.TCPConn
-			_server, err = net.DialTCP("tcp", nil, protocolAddr)
-			if err == nil {
-				_server.SetNoDelay(true)
-				server = tls.Client(_server, nil)
-			}
-		}
-		case "tcp": {
-			var _server *net.TCPConn
-			_server, err = net.DialTCP("tcp", nil, protocolAddr)
+	if protocolHost.Protocol == "tcp" {
+		var _server *net.TCPConn
+		_server, err = net.DialTCP("tcp", nil, protocolAddr)
+		if err == nil {
 			_server.SetNoDelay(true)
 			server = _server
 		}
-		default: {
-			server, err = net.Dial(protocolHost.Type, protocolHost.Host)
-		}
+	} else {
+		server, err = net.Dial(protocolHost.Protocol, protocolHost.Host)
+	}
+	
+	if protocolHost.Tls {
+		server = tls.Client(server, nil)
 	}
 	
 	if err != nil {
@@ -226,8 +247,14 @@ func (p *ProxyListener) handleConnection(listenerID uint64, client net.Conn) {
 	
 	server.Write(headBytes)
 	
-	go io.Copy(server, client)
-	io.Copy(client, server)
+	go initiateCopy(server, client)
+	initiateCopy(client, server)
+}
+
+func initiateCopy(from net.Conn, to net.Conn) {
+	defer from.Close()
+	defer to.Close()
+	io.Copy(from, to)
 }
 
 func (p *ProxyListener) whichProtocolIs(data []byte) *string {
