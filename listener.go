@@ -12,8 +12,9 @@ import (
 	"sync/atomic"
 )
 
+var _PROTOCOL_DEBUG = true
+
 type ProxyListenerConfig struct {
-	Debug bool
 	Listeners []ProxyListener	
 	config *ProxyProtocolConfig
 }
@@ -37,8 +38,6 @@ type ProxyTlsConfig struct {
 }
 
 type ProxyListener struct {
-	Debug bool
-
 	FallbackProtocol string
 	ListenerAddress string
 
@@ -53,7 +52,7 @@ type ProxyListener struct {
 	config *ProxyProtocolConfig
 }
 
-func LoadListeners(file string, config *ProxyProtocolConfig, debug bool) *ProxyListenerConfig {
+func LoadListeners(file string, config *ProxyProtocolConfig) *ProxyListenerConfig {
 	var cJSON []proxyListenerJSON
 	
 	fileReader, err := os.Open(file)
@@ -73,7 +72,6 @@ func LoadListeners(file string, config *ProxyProtocolConfig, debug bool) *ProxyL
 	c.Listeners = make([]ProxyListener, len(cJSON))
 	for i, cJSONSingle := range cJSON {
 		cListener := &c.Listeners[i]
-		cListener.Debug = debug
 		cListener.Tls = cJSONSingle.Tls
 		cListener.FallbackProtocol = cJSONSingle.FallbackProtocol
 		cListener.ListenerAddress = cJSONSingle.ListenerAddress
@@ -106,7 +104,6 @@ func LoadListeners(file string, config *ProxyProtocolConfig, debug bool) *ProxyL
 		}
 	}
 	c.config = config
-	c.Debug = debug
 	
 	return c
 }
@@ -327,7 +324,7 @@ func (p *ProxyListener) connectionDiscoverProtocol(conn net.Conn) (*string, []by
 	foundProtocol = p.whichProtocolIs(buff[0:pos])
 	
 	if foundProtocol == nil {
-		if p.Debug {
+		if _PROTOCOL_DEBUG {
 			log.Printf("UN P B: %x %x %x %x %x %x %x", buff[0], buff[1], buff[2], buff[3], buff[4], buff[5], buff[6])
 			log.Printf("UN P S: %s", buff[0:pos])
 		}
