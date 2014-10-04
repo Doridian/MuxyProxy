@@ -3,7 +3,7 @@
 		"type": "line_regex",
 		"value": "(?i)^[A-Z]+ /[^ ]* HTTP/[0-9.]+$"
 	},
-	"https": {
+	"ssl": {
 		"type": "raw_bytes",
 		"value": [22, 3, -1, -1, -1, 1]
 	},
