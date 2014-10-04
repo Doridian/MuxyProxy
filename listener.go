@@ -59,20 +59,18 @@ type ProxyListener struct {
 	config *ProxyProtocolConfig
 }
 
-func LoadListeners(file string, config *ProxyProtocolConfig) *ProxyListenerConfig {
+func LoadListeners(file string, config *ProxyProtocolConfig) (*ProxyListenerConfig, error) {
 	var cJSON []proxyListenerJSON
 	
 	fileReader, err := os.Open(file)
 	if err != nil {
-		log.Fatalf("Load CListeners: open err: %v", err)
-		return nil
+		return nil, err
 	}	
 	jsonReader := json.NewDecoder(fileReader)
 	err = jsonReader.Decode(&cJSON)
 	fileReader.Close()
 	if err != nil {
-		log.Fatalf("Load CListeners: json err: %v", err)
-		return nil
+		return nil, err
 	}
 	
 	c := new(ProxyListenerConfig)
@@ -114,7 +112,7 @@ func LoadListeners(file string, config *ProxyProtocolConfig) *ProxyListenerConfi
 	}
 	c.config = config
 	
-	return c
+	return c, nil
 }
 
 func (c *ProxyListenerConfig) Start() {

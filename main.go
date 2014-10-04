@@ -7,13 +7,15 @@ import (
 
 func main() {
 	log.Println("Loading protocols.json")
-	config := LoadProtocols("protocols.json")
-	if config == nil {
+	config, err := LoadProtocols("protocols.json")
+	if err != nil {
+		log.Fatalf("Error: %v", err)
 		return
 	}
 	log.Println("Loading listeners.json")
-	listeners := LoadListeners("listeners.json", config)
-	if listeners == nil {
+	listeners, err := LoadListeners("listeners.json", config)
+	if err != nil {
+		log.Fatalf("Error: %v", err)
 		return
 	}
 	log.Println("Starting listeners")

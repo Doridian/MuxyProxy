@@ -4,7 +4,6 @@ import (
 	"regexp"
 	"os"
 	"encoding/json"
-	"log"
 )
 
 type ProxyProtocolConfig struct {
@@ -35,7 +34,7 @@ type protocolConfigJSON struct {
 	Value interface{}
 }
 
-func LoadProtocols(fileName string) *ProxyProtocolConfig {
+func LoadProtocols(fileName string) (*ProxyProtocolConfig, error) {
 	c := new(ProxyProtocolConfig)
 	c.LINE_PROTOCOLS_REGEXP = make(map[string]*regexp.Regexp)
 	c.LINE_PROTOCOLS_LITERAL = make(map[string][]int)
@@ -46,15 +45,13 @@ func LoadProtocols(fileName string) *ProxyProtocolConfig {
 
 	fileReader, err := os.Open(fileName)
 	if err != nil {
-		log.Fatalf("Load CProtocols: open err: %v", err)
-		return nil
+		return nil, err
 	}	
 	jsonReader := json.NewDecoder(fileReader)
 	err = jsonReader.Decode(&protocolsConfig)
 	fileReader.Close()
 	if err != nil {
-		log.Fatalf("Load CProtocols: json err: %v", err)
-		return nil
+		return nil, err
 	}
 	
 	for name, protocolConfig := range protocolsConfig {
@@ -82,5 +79,5 @@ func LoadProtocols(fileName string) *ProxyProtocolConfig {
 		}
 	}
 	
-	return c
+	return c, nil
 }
