@@ -9,6 +9,7 @@ import (
 	"crypto/tls"
 	"os"
 	"encoding/json"
+	"sync/atomic"
 )
 
 type ProxyListenerConfig struct {
@@ -116,18 +117,25 @@ func (c *ProxyListenerConfig) Start() {
 	}
 }
 
+var listenerIDAtomic = new(uint64)
+
 func (p *ProxyListener) Start() {
+	listenerID := atomic.AddUint64(listenerIDAtomic, 1)
+
 	listenerAddr, err := net.ResolveTCPAddr("tcp", p.ListenerAddress)
 	if err != nil {
-		log.Printf("Could not resolve listener: %v", err)
+		log.Printf("[L#%d] Could not resolve listener: %v", listenerID, err)
 		return
 	}
 	
 	listener, err := net.ListenTCP("tcp", listenerAddr)
 	if err != nil {
-		log.Printf("Could not listen: %v", err)
+		log.Printf("[L#%d] Could not listen: %v", listenerID, err)
 		return
 	}
+	
+	log.Printf("[L#%d] Started listening on tcp://%v", listenerID, listenerAddr)
+	defer log.Printf("[L#%d] Stopped listener", listenerID)
 	
 	var tlsConfig *tls.Config
 	if p.Tls != nil {
@@ -135,7 +143,7 @@ func (p *ProxyListener) Start() {
 		for _, tlsHost := range *p.Tls {
 			cert, err := tls.LoadX509KeyPair(tlsHost.Certificate, tlsHost.PrivateKey)
 			if err != nil {
-				log.Printf("Could not load keypair: %v", err)
+				log.Printf("[L#%d] Could not load keypair: %v", listenerID, err)
 				continue
 			}
 			tlsConfig.Certificates = append(tlsConfig.Certificates, cert)
@@ -147,40 +155,50 @@ func (p *ProxyListener) Start() {
 	for {
 		conn, err := listener.AcceptTCP()
 		if err != nil {
-			log.Printf("Accept error: %v", err)
+			log.Printf("[L#%d] Accept error: %v", listenerID, err)
 			continue
 		}
 		
 		conn.SetNoDelay(true)
 		if tlsConfig != nil {
-			go p.handleConnection(tls.Server(conn, tlsConfig))
+			go p.handleConnection(listenerID, tls.Server(conn, tlsConfig))
 		} else {
-			go p.handleConnection(conn)
+			go p.handleConnection(listenerID, conn)
 		}
 	}
 }
 
-func (p *ProxyListener) handleConnection(client net.Conn) {
+var connectionIDAtomic = new(uint64)
+
+func (p *ProxyListener) handleConnection(listenerID uint64, client net.Conn) {
+	defer client.Close()
+
+	connectionID := atomic.AddUint64(connectionIDAtomic, 1)
+	
+	defer log.Printf("[L#%d] [C#%d] Closed", listenerID, connectionID)
+	
+	log.Printf("[L#%d] [C#%d] Open from %v to %v", listenerID, connectionID, client.RemoteAddr(), client.LocalAddr())
+	
 	protocolPtr, headBytes := p.connectionDiscoverProtocol(client)
 	
 	var protocol string
 	if protocolPtr == nil {
 		protocol = p.FallbackProtocol
+		log.Printf("[L#%d] [C#%d] Using fallback protocol: %s", listenerID, connectionID, protocol)
 	} else {
 		protocol = *protocolPtr
-	}
-	
-	if p.Debug {
-		log.Printf("Found protocol: %v", protocol)
+		log.Printf("[L#%d] [C#%d] Protocol: %s", listenerID, connectionID, protocol)
 	}
 	
 	protocolHost := p.ProtocolHosts[protocol]
+	log.Printf("[L#%d] [C#%d] Connecting client to backend %s://%s", listenerID, connectionID, protocolHost.Type, protocolHost.Host)
+	
 	var server net.Conn
 	var err error
 	
 	protocolAddr, err := net.ResolveTCPAddr("tcp", protocolHost.Host)
 	if err != nil {
-		log.Printf("Could not resolve backend: %v", err)
+		log.Printf("[L#%d] [C#%d] ERROR: Could not resolve backend: %v", listenerID, connectionID, err)
 		return
 	}
 	
@@ -205,15 +223,14 @@ func (p *ProxyListener) handleConnection(client net.Conn) {
 	}
 	
 	if err != nil {
-		log.Printf("Error establishing backend connection for protocol %s: %v", protocol, err)
-		client.Close()
+		log.Printf("[L#%d] [C#%d] ERROR: Could not stablish backend connection: %v", listenerID, connectionID, protocol, err)
 		return
 	}
 	
 	server.Write(headBytes)
 	
 	go io.Copy(server, client)
-	go io.Copy(client, server)
+	io.Copy(client, server)
 }
 
 func (p *ProxyListener) whichProtocolIs(data []byte) *string {
