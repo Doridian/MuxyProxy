@@ -1,20 +1,18 @@
 [
 	{
 		"FallbackProtocol": "telnet",
-		"ListenerAddress": ":1337",
-		"ListenerProtocol": "tcp",
+		"ListenerAddress": "tcp://:1337",
 		"ProtocolDiscoveryTimeout": 3,
 		"ProtocolHosts": {
-			"ssl": {"protocol": "tcp", "host": "127.0.0.1:1338"},
-			"http": {"protocol": "tcp", "host": "1.2.3.4:80"},
-			"ssh": {"protocol": "tcp", "host": "1.2.3.4:22"},
-			"telnet": {"protocol": "tcp", "host": "1.2.3.4:23"}
+			"ssl": "tcp://127.0.0.1:1338",
+			"http": "tcp://1.2.3.4:80",
+			"ssh": "tcp://1.2.3.4:22",
+			"telnet": "tcp://1.2.3.4:23"
 		}
 	},
 	{
 		"FallbackProtocol": "telnet",
-		"ListenerAddress": "127.0.0.1:1338",
-		"ListenerProtocol": "tcp",
+		"ListenerAddress": "tcp+ssl://127.0.0.1:1338",
 		"ProtocolDiscoveryTimeout": 3,
 		"Tls": {
 			[
@@ -24,9 +22,9 @@
 			]
 		},
 		"ProtocolHosts": {
-			"http": {"protocol": "tcp", "tls": true, "host": "1.2.3.4:443"},
-			"ssh": {"protocol": "tcp", "host": "1.2.3.4:22"},
-			"telnet": {"protocol": "tcp", "host": "1.2.3.4:23"}
+			"http": "tcp+ssl://1.2.3.4:443"},
+			"ssh": "tcp://1.2.3.4:22"},
+			"telnet": "tcp://1.2.3.4:23"
 		}
 	}
 ]

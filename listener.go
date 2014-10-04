@@ -20,16 +20,11 @@ type ProxyListenerConfig struct {
 }
 
 type proxyListenerJSON struct {
-	ProtocolHosts map[string]struct {
-		Host string
-		Tls bool
-		Protocol string
-	}
+	ProtocolHosts map[string]string
 	
 	FallbackProtocol string
 	
 	ListenerAddress string
-	ListenerProtocol string
 	
 	Tls *[]ProxyTlsConfig
 	ProtocolDiscoveryTimeout float64
@@ -44,16 +39,11 @@ type ProxyTlsConfig struct {
 type ProxyListener struct {
 	FallbackProtocol string
 	
-	ListenerAddress string
-	ListenerProtocol string
+	ListenerAddress FullAddress
 
 	Tls *[]ProxyTlsConfig
 	
-	ProtocolHosts map[string]struct {
-		Host string
-		Tls bool
-		Protocol string
-	}
+	ProtocolHosts map[string]FullAddress
 	
 	ProtocolDiscoveryTimeout time.Duration
 	config *ProxyProtocolConfig
@@ -79,9 +69,11 @@ func LoadListeners(file string, config *ProxyProtocolConfig) (*ProxyListenerConf
 		cListener := &c.Listeners[i]
 		cListener.Tls = cJSONSingle.Tls
 		cListener.FallbackProtocol = cJSONSingle.FallbackProtocol
-		cListener.ListenerAddress = cJSONSingle.ListenerAddress
-		cListener.ListenerProtocol = cJSONSingle.ListenerProtocol
-		cListener.ProtocolHosts = cJSONSingle.ProtocolHosts
+		cListener.ListenerAddress = DecodeAddressURL(cJSONSingle.ListenerAddress)
+		cListener.ProtocolHosts = make(map[string]FullAddress)
+		for protocol, addressURL := range cJSONSingle.ProtocolHosts {
+			cListener.ProtocolHosts[protocol] = DecodeAddressURL(addressURL)
+		}
 		
 		cListener.ProtocolDiscoveryTimeout = time.Duration(cJSONSingle.ProtocolDiscoveryTimeout) * time.Second
 		cListener.config = new(ProxyProtocolConfig)
@@ -130,15 +122,15 @@ func (p *ProxyListener) Start() {
 	var tcpListener *net.TCPListener
 	var err error
 	
-	if p.ListenerProtocol == "tcp" {
-		listenerAddr, err := net.ResolveTCPAddr("tcp", p.ListenerAddress)
+	if p.ListenerAddress.Protocol == "tcp" {
+		listenerAddr, err := net.ResolveTCPAddr("tcp", p.ListenerAddress.Host)
 		if err != nil {
 			log.Printf("[L#%d] Could not resolve listener: %v", listenerID, err)
 			return
 		}
 		tcpListener, err = net.ListenTCP("tcp", listenerAddr)
 	} else {
-		listener, err = net.Listen(p.ListenerProtocol, p.ListenerAddress)
+		listener, err = net.Listen(p.ListenerAddress.Protocol, p.ListenerAddress.Host)
 	}
 	
 	if err != nil {
@@ -146,11 +138,11 @@ func (p *ProxyListener) Start() {
 		return
 	}
 	
-	log.Printf("[L#%d] Started listening on %s://%s (TLS: %t)", listenerID, p.ListenerProtocol, p.ListenerAddress, p.Tls != nil)
+	log.Printf("[L#%d] Started listening on %s://%s (TLS: %t)", listenerID, p.ListenerAddress.Protocol, p.ListenerAddress.Host, p.ListenerAddress.Tls)
 	defer log.Printf("[L#%d] Stopped listener", listenerID)
 	
 	var tlsConfig *tls.Config
-	if p.Tls != nil {
+	if p.ListenerAddress.Tls {
 		tlsConfig = new(tls.Config)
 		for _, tlsHost := range *p.Tls {
 			cert, err := tls.LoadX509KeyPair(tlsHost.Certificate, tlsHost.PrivateKey)
