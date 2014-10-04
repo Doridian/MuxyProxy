@@ -30,7 +30,7 @@ func literalMatchFromArray(array []interface{}) []int {
 	return valueInts
 }
 
-type protocolConfig struct {
+type protocolConfigJSON struct {
 	Type string
 	Value interface{}
 }
@@ -42,7 +42,7 @@ func LoadProtocols(fileName string) *ProxyProtocolConfig {
 	c.RAW_PROTOCOLS_REGEXP = make(map[string]*regexp.Regexp)
 	c.RAW_PROTOCOLS_LITERAL = make(map[string][]int)
 
-	protocolsConfig := make(map[string]protocolConfig)
+	protocolsConfig := make(map[string]protocolConfigJSON)
 
 	fileReader, err := os.Open(fileName)
 	if err != nil {
