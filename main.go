@@ -5,11 +5,11 @@ import (
 	"time"
 )
 
-var _DEBUG = true
+var __DEBUG = true
 
 func main() {
 	config := LoadProtocols("protocols.json")
-	listeners := LoadListeners("listeners.json", config)
+	listeners := LoadListeners("listeners.json", config, __DEBUG)
 	log.Println("GO")
 	listeners.Start()
 	for {

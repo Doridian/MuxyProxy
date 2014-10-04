@@ -12,12 +12,16 @@ import (
 )
 
 type ProxyListenerConfig struct {
-	Listeners []ProxyListener
+	Debug bool
+
+	Listeners []ProxyListener	
 	
 	config *ProxyProtocolConfig
 }
 
 type ProxyListener struct {
+	Debug bool
+
 	ProtocolHosts map[string]struct {
 		Host string
 		Type string
@@ -42,7 +46,7 @@ type ProxyTlsConfig struct {
 	PrivateKey string
 }
 
-func LoadListeners(file string, config *ProxyProtocolConfig) *ProxyListenerConfig {
+func LoadListeners(file string, config *ProxyProtocolConfig, debug bool) *ProxyListenerConfig {
 	c := new(ProxyListenerConfig)
 	
 	fileReader, err := os.Open(file)
@@ -59,18 +63,21 @@ func LoadListeners(file string, config *ProxyProtocolConfig) *ProxyListenerConfi
 	log.Println("Load CListeners: OK")
 	
 	c.config = config
+	c.Debug = debug
 	
 	return c
 }
 
 func (c *ProxyListenerConfig) Start() {
 	for _,listener := range c.Listeners {
-		go listener.Start(c.config)
+		go listener.Start(c.config, c.Debug)
 	}
 }
 
-func (p *ProxyListener) Start(config *ProxyProtocolConfig) {
+func (p *ProxyListener) Start(config *ProxyProtocolConfig, debug bool) {
 	p.config = config
+	p.Debug = debug
+	
 	p.protocolDiscoveryTimeoutReal = time.Duration(p.ProtocolDiscoveryTimeout) * time.Second
 
 	p.lineProtocolsRegexp = make(map[string]*regexp.Regexp)
@@ -150,7 +157,7 @@ func (p *ProxyListener) handleConnection(client net.Conn) {
 		protocol = *protocolPtr
 	}
 	
-	if _DEBUG {
+	if p.Debug {
 		log.Printf("Found protocol: %v", protocol)
 	}
 	
@@ -291,7 +298,7 @@ func (p *ProxyListener) connectionDiscoverProtocol(conn net.Conn) (*string, []by
 	foundProtocol = p.whichProtocolIs(buff[0:pos])
 	
 	if foundProtocol == nil {
-		if _DEBUG {
+		if p.Debug {
 			log.Printf("UN P B: %x %x %x %x %x %x %x", buff[0], buff[1], buff[2], buff[3], buff[4], buff[5], buff[6])
 			log.Printf("UN P S: %s", buff[0:pos])
 		}
