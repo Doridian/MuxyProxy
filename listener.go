@@ -64,16 +64,16 @@ func LoadListeners(file string, config *ProxyProtocolConfig) *ProxyListenerConfi
 	
 	fileReader, err := os.Open(file)
 	if err != nil {
-		log.Panicf("Load CListeners: open err: %v", err)
+		log.Fatalf("Load CListeners: open err: %v", err)
+		return nil
 	}	
 	jsonReader := json.NewDecoder(fileReader)
 	err = jsonReader.Decode(&cJSON)
 	fileReader.Close()
 	if err != nil {
-		log.Panicf("Load CListeners: json err: %v", err)
+		log.Fatalf("Load CListeners: json err: %v", err)
+		return nil
 	}
-	
-	log.Println("Load CListeners: OK")
 	
 	c := new(ProxyListenerConfig)
 	c.Listeners = make([]ProxyListener, len(cJSON))

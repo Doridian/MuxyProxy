@@ -46,13 +46,15 @@ func LoadProtocols(fileName string) *ProxyProtocolConfig {
 
 	fileReader, err := os.Open(fileName)
 	if err != nil {
-		log.Panicf("Load CProtocols: open err: %v", err)
+		log.Fatalf("Load CProtocols: open err: %v", err)
+		return nil
 	}	
 	jsonReader := json.NewDecoder(fileReader)
 	err = jsonReader.Decode(&protocolsConfig)
 	fileReader.Close()
 	if err != nil {
-		log.Panicf("Load CProtocols: json err: %v", err)
+		log.Fatalf("Load CProtocols: json err: %v", err)
+		return nil
 	}
 	
 	for name, protocolConfig := range protocolsConfig {
@@ -79,8 +81,6 @@ func LoadProtocols(fileName string) *ProxyProtocolConfig {
 			}
 		}
 	}
-	
-	log.Println("Load CProtocols: OK")
 	
 	return c
 }
