@@ -4,10 +4,28 @@
 		"ListenerAddress": ":1337",
 		"ProtocolDiscoveryTimeout": 3,
 		"ProtocolHosts": {
-			"ssl": "1.2.3.4:443",
-			"http": "1.2.3.4:80",
-			"ssh": "1.2.3.4:22",
-			"telnet": "1.2.3.4:23"
+			"ssl": {"type": "tcp", "host": "127.0.0.1:1338"},
+			"http": {"type": "tcp", "host": "1.2.3.4:80"},
+			"ssh": {"type": "tcp", "host": "1.2.3.4:22"},
+			"telnet": {"type": "tcp", "host": "1.2.3.4:23"}
+		}
+	},
+	{
+		"FallbackProtocol": "telnet",
+		"ListenerAddress": "127.0.0.1:1338",
+		"ProtocolDiscoveryTimeout": 3,
+		"Tls": {
+			[
+				"Host": "example.org",
+				"Certificate": "/etc/ssl/snakeoil.crt",
+				"PrivateKey": "/etc/ssl/snakeoil.key",
+			]
+		},
+		"ProtocolHosts": {
+			"ssl": {"type": "tcp", "host": "127.0.0.1:1338"},
+			"http": {"type": "tcp", "host": "1.2.3.4:80"},
+			"ssh": {"type": "tcp", "host": "1.2.3.4:22"},
+			"telnet": {"type": "tcp", "host": "1.2.3.4:23"}
 		}
 	}
 ]
