@@ -13,6 +13,6 @@
 	},
 	"irc": {
 		"type": "line_regex",
-		"value": "(?i)^(user |nick) "
+		"value": "(?i)^(user|nick) "
 	}		
 }
