@@ -4,7 +4,7 @@
 		"ListenerAddress": "tcp://:1337",
 		"ProtocolDiscoveryTimeout": 3,
 		"ProtocolHosts": {
-			"ssl": "tcp://127.0.0.1:1338",
+			"ssl": "unix:///tmp/muxproxy_ssl",
 			"http": "tcp://1.2.3.4:80",
 			"ssh": "tcp://1.2.3.4:22",
 			"telnet": "tcp://1.2.3.4:23"
@@ -12,7 +12,7 @@
 	},
 	{
 		"FallbackProtocol": "telnet",
-		"ListenerAddress": "tcp+ssl://127.0.0.1:1338",
+		"ListenerAddress": "unix+ssl:///tmp/muxproxy_ssl",
 		"ProtocolDiscoveryTimeout": 3,
 		"Tls": {
 			[
