@@ -22,10 +22,13 @@ type ProxyConnection struct {
 	client net.Conn
 	server net.Conn
 	remoteIP net.IP
+	connectionID uint64
 }
 
 func HandleNewConnection(listener *ProxyListener, client net.Conn) {
 	c := new(ProxyConnection)
+	
+	c.connectionID = atomic.AddUint64(connectionIDAtomic, 1)
 	c.listener = listener
 	c.client = client
 	
@@ -63,37 +66,35 @@ func (p *ProxyConnection) readConnUntil(headBytes *[]byte, delimeters [][]byte) 
 
 func (p *ProxyConnection) handleConnection() {
 	defer p.client.Close()
-
-	connectionID := atomic.AddUint64(connectionIDAtomic, 1)
 	
-	defer log.Printf("[L#%d] [C#%d] Closed", p.listener.listenerID, connectionID)
+	defer log.Printf("[L#%d] [C#%d] Closed", p.listener.listenerID, p.connectionID)
 	
-	log.Printf("[L#%d] [C#%d] Open from %v to %v", p.listener.listenerID, connectionID, p.remoteIP, p.client.LocalAddr())
+	log.Printf("[L#%d] [C#%d] Open from %v to %v", p.listener.listenerID, p.connectionID, p.remoteIP, p.client.LocalAddr())
 	
 	protocolPtr, headBytes := p.connectionDiscoverProtocol()
 	
 	var protocol string
 	if protocolPtr == nil {
 		if p.listener.FallbackProtocol == nil {
-			log.Printf("[L#%d] [C#%d] Could not determine protocol and no fallback set", p.listener.listenerID, connectionID)
+			log.Printf("[L#%d] [C#%d] Could not determine protocol and no fallback set", p.listener.listenerID, p.connectionID)
 			return
 		}
 		protocol = *p.listener.FallbackProtocol
-		log.Printf("[L#%d] [C#%d] Using fallback protocol: %s", p.listener.listenerID, connectionID, protocol)
+		log.Printf("[L#%d] [C#%d] Using fallback protocol: %s", p.listener.listenerID, p.connectionID, protocol)
 	} else {
 		protocol = *protocolPtr
-		log.Printf("[L#%d] [C#%d] Protocol: %s", p.listener.listenerID, connectionID, protocol)
+		log.Printf("[L#%d] [C#%d] Protocol: %s", p.listener.listenerID, p.connectionID, protocol)
 	}
 	
 	protocolHost := p.listener.ProtocolHosts[protocol]
-	log.Printf("[L#%d] [C#%d] Connecting client to backend %s://%s (TLS: %t)", p.listener.listenerID, connectionID, protocolHost.Protocol, protocolHost.Host, protocolHost.Tls)
+	log.Printf("[L#%d] [C#%d] Connecting client to backend %s://%s (TLS: %t)", p.listener.listenerID, p.connectionID, protocolHost.Protocol, protocolHost.Host, protocolHost.Tls)
 	
 	var err error
 	
 	if protocolHost.IsTCP() {
 		protocolAddr, err := net.ResolveTCPAddr(protocolHost.Protocol, protocolHost.Host)
 		if err != nil {
-			log.Printf("[L#%d] [C#%d] ERROR: Could not resolve backend: %v", p.listener.listenerID, connectionID, err)
+			log.Printf("[L#%d] [C#%d] ERROR: Could not resolve backend: %v", p.listener.listenerID, p.connectionID, err)
 			return
 		}
 		
@@ -112,7 +113,7 @@ func (p *ProxyConnection) handleConnection() {
 	}
 	
 	if err != nil {
-		log.Printf("[L#%d] [C#%d] ERROR: Could not stablish backend connection: %v", p.listener.listenerID, connectionID, protocol, err)
+		log.Printf("[L#%d] [C#%d] ERROR: Could not stablish backend connection: %v", p.listener.listenerID, p.connectionID, protocol, err)
 		return
 	}
 	
