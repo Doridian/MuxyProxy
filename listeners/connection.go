@@ -93,41 +93,50 @@ func (p *ProxyListener) handleConnection(client net.Conn) {
 		return
 	}
 	
-	if protocol == "http" && protocolHost.Options["http_send_x_forwarded_for"] && p.readConnUntil(client, &headBytes, htmlEndingDelimeters) {
-		var remoteIP net.IP
-		if remoteAddrIP, ok := client.RemoteAddr().(*net.IPAddr); ok {
-			remoteIP = remoteAddrIP.IP
-		} else if remoteAddrTCP, ok := client.RemoteAddr().(*net.TCPAddr); ok {
-			remoteIP = remoteAddrTCP.IP
-		} else if remoteAddrUDP, ok := client.RemoteAddr().(*net.UDPAddr); ok {
-			remoteIP = remoteAddrUDP.IP
-		}
-		if remoteIP != nil {
-			headStr := string(headBytes)
-			strData := strings.Split(headStr, "\n")
-			strData = strData[:len(strData)-2]
-			xFWFHeader := fmt.Sprintf("X-Forwarded-For: %v", remoteIP.String())
-			foundXFWFHeader := false
-			foundConnectionHeader := false
-			for i, strLine := range strData {
-				if len(strLine) > 16 && strings.ToLower(strLine[:16]) == "x-forwarded-for:" {
-					strData[i] = xFWFHeader
-					foundXFWFHeader = true
-				} else if len(strLine) > 12 && strings.ToLower(strLine[:12]) == "connection:" {
-					strData[i] = "Connection: close"
-					foundConnectionHeader = true
+	var remoteIP net.IP
+	if remoteAddrIP, ok := client.RemoteAddr().(*net.IPAddr); ok {
+		remoteIP = remoteAddrIP.IP
+	} else if remoteAddrTCP, ok := client.RemoteAddr().(*net.TCPAddr); ok {
+		remoteIP = remoteAddrTCP.IP
+	} else if remoteAddrUDP, ok := client.RemoteAddr().(*net.UDPAddr); ok {
+		remoteIP = remoteAddrUDP.IP
+	}
+	
+	if remoteIP != nil {
+		if protocol == "http" && protocolHost.Options["http_send_x_forwarded_for"] && p.readConnUntil(client, &headBytes, htmlEndingDelimeters) {
+			if remoteIP != nil {
+				headStr := string(headBytes)
+				strData := strings.Split(headStr, "\n")
+				strData = strData[:len(strData)-2]
+				xFWFHeader := fmt.Sprintf("X-Forwarded-For: %v", remoteIP.String())
+				foundXFWFHeader := false
+				foundConnectionHeader := false
+				for i, strLine := range strData {
+					if len(strLine) > 16 && strings.ToLower(strLine[:16]) == "x-forwarded-for:" {
+						strData[i] = xFWFHeader
+						foundXFWFHeader = true
+					} else if len(strLine) > 12 && strings.ToLower(strLine[:12]) == "connection:" {
+						strData[i] = "Connection: close"
+						foundConnectionHeader = true
+					}
 				}
+				if !foundXFWFHeader {
+					strData = append(strData, xFWFHeader)
+				}
+				if !foundConnectionHeader {
+					strData = append(strData, "Connection: close")
+				}
+				strData = append(strData, "")
+				strData = append(strData, "")
+				strBytes := []byte(strings.Join(strData, "\n"))
+				headBytes = strBytes
 			}
-			if !foundXFWFHeader {
-				strData = append(strData, xFWFHeader)
-			}
-			if !foundConnectionHeader {
-				strData = append(strData, "Connection: close")
-			}
-			strData = append(strData, "")
-			strData = append(strData, "")
-			strBytes := []byte(strings.Join(strData, "\n"))
-			headBytes = strBytes
+		}
+		
+		if protocolHost.Options["send_real_ip"] {
+			ipData := remoteIP
+			server.Write([]byte{0xFF,9,'M','u','x','y','P','r','o','x','y',byte(len(ipData))})
+			server.Write(ipData)
 		}
 	}
 	

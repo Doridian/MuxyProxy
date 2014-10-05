@@ -7,7 +7,7 @@
 			"ssl": "unix:///tmp/muxproxy_ssl",
 			"http": "tcp[http_send_x_forwarded_for]://1.2.3.4:80",
 			"ssh": "tcp://1.2.3.4:22",
-			"telnet": "tcp://1.2.3.4:23"
+			"telnet": "tcp[send_real_ip]://1.2.3.4:23"
 		}
 	},
 	{
@@ -24,7 +24,7 @@
 		"ProtocolHosts": {
 			"http": "tcp+ssl[http_send_x_forwarded_for]://1.2.3.4:443",
 			"ssh": "tcp://1.2.3.4:22",
-			"telnet": "tcp://1.2.3.4:23"
+			"telnet": "tcp[send_real_ip]://1.2.3.4:23"
 		}
 	}
 ]
