@@ -5,11 +5,12 @@ import (
 	"strings"
 )
 
-var addressURLRegex = regexp.MustCompile("^([^:]+)://(.+)$")
+var addressURLRegex = regexp.MustCompile("^([^\\[:]+)(\\[[^\\]]+\\])?://(.+)$")
 
 type FullAddress struct {
 	Host string
 	Protocol string
+	Options map[string]bool
 	Tls bool
 }
 
@@ -28,7 +29,14 @@ func DecodeAddressURL(url string) FullAddress {
 		return ret
 	}
 	
-	ret.Host = matches[2]
+	ret.Options = make(map[string]bool)
+	if len(matches[2]) > 0 {
+		for _, option := range strings.Split(matches[2][1:len(matches[2])-1], ";") {
+			ret.Options[option] = true
+		}
+	}
+	
+	ret.Host = matches[3]
 	
 	protocols := strings.Split(matches[1], "+")
 	for _, proto := range protocols {

@@ -5,7 +5,7 @@
 		"ProtocolDiscoveryTimeout": 3,
 		"ProtocolHosts": {
 			"ssl": "unix:///tmp/muxproxy_ssl",
-			"http": "tcp://1.2.3.4:80",
+			"http": "tcp[http_send_x_forwarded_for]://1.2.3.4:80",
 			"ssh": "tcp://1.2.3.4:22",
 			"telnet": "tcp://1.2.3.4:23"
 		}
@@ -22,7 +22,7 @@
 			]
 		},
 		"ProtocolHosts": {
-			"http": "tcp+ssl://1.2.3.4:443"},
+			"http": "tcp+ssl[http_send_x_forwarded_for]://1.2.3.4:443"},
 			"ssh": "tcp://1.2.3.4:22"},
 			"telnet": "tcp://1.2.3.4:23"
 		}

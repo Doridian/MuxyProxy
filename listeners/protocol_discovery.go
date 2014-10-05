@@ -55,7 +55,7 @@ func (p *ProxyListener) whichProtocolIs(data []byte) *string {
 func (p *ProxyListener) connectionDiscoverProtocol(conn net.Conn) (*string, []byte) {
 	defer conn.SetDeadline(time.Unix(0, 0))
 	
-	buff := make([]byte, 128)
+	buff := make([]byte, 4096)
 	pos := 0
 	var foundProtocol *string
 	for {
