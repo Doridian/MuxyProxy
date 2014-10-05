@@ -1,26 +1,26 @@
 [
 	{
-		"protocol": "http",
-		"type": "regex",
-		"target": "line",
-		"value": "(?i)^[A-Z]+ /[^ ]* HTTP/[0-9.]+$"
+		"Protocol": "http",
+		"Type": "regex",
+		"Target": "line",
+		"Value": "(?i)^[A-Z]+ /[^ ]* HTTP/[0-9.]+$"
 	},
 	{
-		"protocol": "ssl",
-		"type": "bytes",
-		"target": "raw",
-		"value": [22, 3, -1, -1, -1, 1]
+		"Protocol": "ssl",
+		"Type": "bytes",
+		"Target": "raw",
+		"Value": [22, 3, -1, -1, -1, 1]
 	},
 	{
-		"protocol": "ssh",
-		"type": "string",
-		"target": "raw",
-		"value": "SSH-2.0-"
+		"Protocol": "ssh",
+		"Type": "string",
+		"Target": "raw",
+		"Value": "SSH-2.0-"
 	},
 	{
-		"protocol": "irc",
-		"type": "regex",
-		"target": "line",
-		"value": "(?i)^(user|nick) "
+		"Protocol": "irc",
+		"Type": "regex",
+		"Target": "line",
+		"Value": "(?i)^(user|nick) "
 	}		
 ]
