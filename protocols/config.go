@@ -1,4 +1,4 @@
-package main
+package protocols
 
 import (
 	"regexp"
@@ -90,7 +90,7 @@ type protocolConfigJSON struct {
 	Value interface{}
 }
 
-func LoadProtocols(fileName string) (*ProxyProtocolConfig, error) {
+func Load(fileName string) (*ProxyProtocolConfig, error) {
 	c := new(ProxyProtocolConfig)
 
 	protocolsConfig := make([]protocolConfigJSON, 0)

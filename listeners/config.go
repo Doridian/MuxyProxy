@@ -1,4 +1,4 @@
-package main
+package listeners
 
 import (
 	"time"
@@ -9,13 +9,15 @@ import (
 	"os"
 	"encoding/json"
 	"sync/atomic"
+	"github.com/Doridian/MuxyProxy/utils"
+	"github.com/Doridian/MuxyProxy/protocols"
 )
 
 var _PROTOCOL_DEBUG = true
 
 type ProxyListenerConfig struct {
 	Listeners []ProxyListener	
-	config *ProxyProtocolConfig
+	config *protocols.ProxyProtocolConfig
 }
 
 type proxyListenerJSON struct {
@@ -38,17 +40,17 @@ type ProxyTlsConfig struct {
 type ProxyListener struct {
 	FallbackProtocol string
 	
-	ListenerAddress FullAddress
+	ListenerAddress utils.FullAddress
 
 	Tls *[]ProxyTlsConfig
 	
-	ProtocolHosts map[string]FullAddress
+	ProtocolHosts map[string]utils.FullAddress
 	
 	ProtocolDiscoveryTimeout time.Duration
-	config *ProxyProtocolConfig
+	config *protocols.ProxyProtocolConfig
 }
 
-func LoadListeners(file string, config *ProxyProtocolConfig) (*ProxyListenerConfig, error) {
+func Load(file string, config *protocols.ProxyProtocolConfig) (*ProxyListenerConfig, error) {
 	var cJSON []proxyListenerJSON
 	
 	fileReader, err := os.Open(file)
@@ -68,16 +70,16 @@ func LoadListeners(file string, config *ProxyProtocolConfig) (*ProxyListenerConf
 		cListener := &c.Listeners[i]
 		cListener.Tls = cJSONSingle.Tls
 		cListener.FallbackProtocol = cJSONSingle.FallbackProtocol
-		cListener.ListenerAddress = DecodeAddressURL(cJSONSingle.ListenerAddress)
-		cListener.ProtocolHosts = make(map[string]FullAddress)
+		cListener.ListenerAddress = utils.DecodeAddressURL(cJSONSingle.ListenerAddress)
+		cListener.ProtocolHosts = make(map[string]utils.FullAddress)
 		for protocol, addressURL := range cJSONSingle.ProtocolHosts {
-			cListener.ProtocolHosts[protocol] = DecodeAddressURL(addressURL)
+			cListener.ProtocolHosts[protocol] = utils.DecodeAddressURL(addressURL)
 		}
 		
 		cListener.ProtocolDiscoveryTimeout = time.Duration(cJSONSingle.ProtocolDiscoveryTimeout) * time.Second
-		cListener.config = new(ProxyProtocolConfig)
+		cListener.config = new(protocols.ProxyProtocolConfig)
 		
-		cListener.config.Matchers = make([]ProtocolMatcher, 0)
+		cListener.config.Matchers = make([]protocols.ProtocolMatcher, 0)
 		for _, matcher := range config.Matchers {
 			_, ok := cJSONSingle.ProtocolHosts[matcher.GetProtocol()]
 			if ok {
