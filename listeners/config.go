@@ -18,7 +18,7 @@ type ProxyListenerConfig struct {
 type proxyListenerJSON struct {
 	ProtocolHosts map[string]string
 	
-	FallbackProtocol string
+	FallbackProtocol *string
 	
 	ListenerAddress string
 	

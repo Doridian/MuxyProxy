@@ -11,7 +11,7 @@ import (
 )
 
 type ProxyListener struct {
-	FallbackProtocol string
+	FallbackProtocol *string
 	
 	ListenerAddress utils.FullAddress
 

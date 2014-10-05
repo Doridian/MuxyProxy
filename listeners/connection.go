@@ -23,7 +23,11 @@ func (p *ProxyListener) handleConnection(listenerID uint64, client net.Conn) {
 	
 	var protocol string
 	if protocolPtr == nil {
-		protocol = p.FallbackProtocol
+		if p.FallbackProtocol == nil {
+			log.Printf("[L#%d] [C#%d] Could not determine protocol and no fallback set", listenerID, connectionID)
+			return
+		}
+		protocol = *p.FallbackProtocol
 		log.Printf("[L#%d] [C#%d] Using fallback protocol: %s", listenerID, connectionID, protocol)
 	} else {
 		protocol = *protocolPtr
