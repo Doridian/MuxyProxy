@@ -3,6 +3,7 @@ package listeners
 import (
 	"time"
 	"os"
+	"log"
 	"encoding/json"
 	"github.com/Doridian/MuxyProxy/utils"
 	"github.com/Doridian/MuxyProxy/protocols"
@@ -50,10 +51,19 @@ func Load(file string, config *protocols.ProxyProtocolConfig) (*ProxyListenerCon
 	c.Listeners = make([]ProxyListener, len(cJSON))
 	for i, cJSONSingle := range cJSON {
 		cListener := &c.Listeners[i]
+		
+		if cJSONSingle.FallbackProtocol != nil  {
+			if _, ok := cJSONSingle.ProtocolHosts[*cJSONSingle.FallbackProtocol]; !ok {
+				log.Fatalf("Could not load listener. Fallback protocol of %s specified but no handler present", *cJSONSingle.FallbackProtocol)
+				continue
+			}
+		}
+		
 		cListener.Tls = cJSONSingle.Tls
 		cListener.FallbackProtocol = cJSONSingle.FallbackProtocol
 		cListener.ListenerAddress = utils.DecodeAddressURL(cJSONSingle.ListenerAddress)
 		cListener.ProtocolHosts = make(map[string]utils.FullAddress)
+		
 		for protocol, addressURL := range cJSONSingle.ProtocolHosts {
 			cListener.ProtocolHosts[protocol] = utils.DecodeAddressURL(addressURL)
 		}
