@@ -13,6 +13,10 @@ type FullAddress struct {
 	Tls bool
 }
 
+func (f *FullAddress) IsTCP() bool {
+	return f.Protocol == "tcp" || f.Protocol == "tcp4" || f.Protocol == "tcp6"
+}
+
 func DecodeAddressURL(url string) FullAddress {
 	var ret FullAddress
 	ret.Host = url

@@ -32,13 +32,13 @@ func (p *ProxyListener) Start() {
 	var tcpListener *net.TCPListener
 	var err error
 	
-	if p.ListenerAddress.Protocol == "tcp" {
-		listenerAddr, err := net.ResolveTCPAddr("tcp", p.ListenerAddress.Host)
+	if p.ListenerAddress.IsTCP() {
+		listenerAddr, err := net.ResolveTCPAddr(p.ListenerAddress.Protocol, p.ListenerAddress.Host)
 		if err != nil {
 			log.Printf("[L#%d] Could not resolve listener: %v", listenerID, err)
 			return
 		}
-		tcpListener, err = net.ListenTCP("tcp", listenerAddr)
+		tcpListener, err = net.ListenTCP(p.ListenerAddress.Protocol, listenerAddr)
 	} else {
 		listener, err = net.Listen(p.ListenerAddress.Protocol, p.ListenerAddress.Host)
 	}

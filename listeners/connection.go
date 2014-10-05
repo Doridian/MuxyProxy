@@ -36,15 +36,15 @@ func (p *ProxyListener) handleConnection(listenerID uint64, client net.Conn) {
 	var server net.Conn
 	var err error
 	
-	protocolAddr, err := net.ResolveTCPAddr("tcp", protocolHost.Host)
-	if err != nil {
-		log.Printf("[L#%d] [C#%d] ERROR: Could not resolve backend: %v", listenerID, connectionID, err)
-		return
-	}
-	
-	if protocolHost.Protocol == "tcp" {
+	if protocolHost.IsTCP() {
+		protocolAddr, err := net.ResolveTCPAddr(protocolHost.Protocol, protocolHost.Host)
+		if err != nil {
+			log.Printf("[L#%d] [C#%d] ERROR: Could not resolve backend: %v", listenerID, connectionID, err)
+			return
+		}
+		
 		var _server *net.TCPConn
-		_server, err = net.DialTCP("tcp", nil, protocolAddr)
+		_server, err = net.DialTCP(protocolHost.Protocol, nil, protocolAddr)
 		if err == nil {
 			_server.SetNoDelay(true)
 			server = _server
