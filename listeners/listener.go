@@ -5,7 +5,6 @@ import (
 	"net"
 	"log"
 	"crypto/tls"
-	"sync/atomic"
 	"github.com/Doridian/MuxyProxy/utils"
 	"github.com/Doridian/MuxyProxy/protocols"
 )
@@ -15,19 +14,17 @@ type ProxyListener struct {
 	
 	ListenerAddress utils.FullAddress
 
-	Tls *[]ProxyTlsConfig
+	Tls *tls.Config
 	
 	ProtocolHosts map[string]utils.FullAddress
 	
 	ProtocolDiscoveryTimeout time.Duration
 	config *protocols.ProxyProtocolConfig
+	
+	listenerID uint64
 }
 
-var listenerIDAtomic = new(uint64)
-
 func (p *ProxyListener) Start() {
-	listenerID := atomic.AddUint64(listenerIDAtomic, 1)
-
 	var listener net.Listener
 	var tcpListener *net.TCPListener
 	var err error
@@ -35,7 +32,7 @@ func (p *ProxyListener) Start() {
 	if p.ListenerAddress.IsTCP() {
 		listenerAddr, err := net.ResolveTCPAddr(p.ListenerAddress.Protocol, p.ListenerAddress.Host)
 		if err != nil {
-			log.Printf("[L#%d] Could not resolve listener: %v", listenerID, err)
+			log.Printf("[L#%d] Could not resolve listener: %v", p.listenerID, err)
 			return
 		}
 		tcpListener, err = net.ListenTCP(p.ListenerAddress.Protocol, listenerAddr)
@@ -44,27 +41,12 @@ func (p *ProxyListener) Start() {
 	}
 	
 	if err != nil {
-		log.Printf("[L#%d] Could not listen: %v", listenerID, err)
+		log.Printf("[L#%d] Could not listen: %v", p.listenerID, err)
 		return
 	}
 	
-	log.Printf("[L#%d] Started listening on %s://%s (TLS: %t)", listenerID, p.ListenerAddress.Protocol, p.ListenerAddress.Host, p.ListenerAddress.Tls)
-	defer log.Printf("[L#%d] Stopped listener", listenerID)
-	
-	var tlsConfig *tls.Config
-	if p.ListenerAddress.Tls {
-		tlsConfig = new(tls.Config)
-		for _, tlsHost := range *p.Tls {
-			cert, err := tls.LoadX509KeyPair(tlsHost.Certificate, tlsHost.PrivateKey)
-			if err != nil {
-				log.Printf("[L#%d] Could not load keypair: %v", listenerID, err)
-				continue
-			}
-			tlsConfig.Certificates = append(tlsConfig.Certificates, cert)
-		}
-	} else {
-		tlsConfig = nil
-	}
+	log.Printf("[L#%d] Started listening on %s://%s (TLS: %t)", p.listenerID, p.ListenerAddress.Protocol, p.ListenerAddress.Host, p.ListenerAddress.Tls)
+	defer log.Printf("[L#%d] Stopped listener", p.listenerID)
 	
 	for {
 		var conn net.Conn
@@ -79,14 +61,14 @@ func (p *ProxyListener) Start() {
 			conn, err = listener.Accept()
 		}
 		if err != nil {
-			log.Printf("[L#%d] Accept error: %v", listenerID, err)
+			log.Printf("[L#%d] Accept error: %v", p.listenerID, err)
 			continue
 		}
 		
-		if tlsConfig != nil {
-			go p.handleConnection(listenerID, tls.Server(conn, tlsConfig))
+		if p.Tls != nil {
+			go p.handleConnection(tls.Server(conn, p.Tls))
 		} else {
-			go p.handleConnection(listenerID, conn)
+			go p.handleConnection(conn)
 		}
 	}
 }

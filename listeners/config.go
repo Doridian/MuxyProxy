@@ -4,6 +4,8 @@ import (
 	"time"
 	"os"
 	"log"
+	"sync/atomic"
+	"crypto/tls"
 	"encoding/json"
 	"github.com/Doridian/MuxyProxy/utils"
 	"github.com/Doridian/MuxyProxy/protocols"
@@ -33,6 +35,8 @@ type ProxyTlsConfig struct {
 	PrivateKey string
 }
 
+var listenerIDAtomic = new(uint64)
+
 func Load(file string, config *protocols.ProxyProtocolConfig) (*ProxyListenerConfig, error) {
 	var cJSON []proxyListenerJSON
 	
@@ -51,6 +55,7 @@ func Load(file string, config *protocols.ProxyProtocolConfig) (*ProxyListenerCon
 	c.Listeners = make([]ProxyListener, len(cJSON))
 	for i, cJSONSingle := range cJSON {
 		cListener := &c.Listeners[i]
+		cListener.listenerID = atomic.AddUint64(listenerIDAtomic, 1)
 		
 		if cJSONSingle.FallbackProtocol != nil  {
 			if _, ok := cJSONSingle.ProtocolHosts[*cJSONSingle.FallbackProtocol]; !ok {
@@ -59,11 +64,24 @@ func Load(file string, config *protocols.ProxyProtocolConfig) (*ProxyListenerCon
 			}
 		}
 		
-		cListener.Tls = cJSONSingle.Tls
+		if cJSONSingle.Tls != nil {
+			cListener.Tls = new(tls.Config)
+			for _, tlsHost := range *cJSONSingle.Tls {
+				cert, err := tls.LoadX509KeyPair(tlsHost.Certificate, tlsHost.PrivateKey)
+				if err != nil {
+					log.Fatalf("[L#%d] Could not load keypair: %v", cListener.listenerID, err)
+					continue
+				}
+				cListener.Tls.Certificates = append(cListener.Tls.Certificates, cert)
+			}
+		} else {
+			cListener.Tls = nil
+		}
+		
 		cListener.FallbackProtocol = cJSONSingle.FallbackProtocol
 		cListener.ListenerAddress = utils.DecodeAddressURL(cJSONSingle.ListenerAddress)
-		cListener.ProtocolHosts = make(map[string]utils.FullAddress)
 		
+		cListener.ProtocolHosts = make(map[string]utils.FullAddress)
 		for protocol, addressURL := range cJSONSingle.ProtocolHosts {
 			cListener.ProtocolHosts[protocol] = utils.DecodeAddressURL(addressURL)
 		}
