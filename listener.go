@@ -2,7 +2,6 @@ package main
 
 import (
 	"time"
-	"regexp"
 	"log"
 	"net"
 	"io"
@@ -78,27 +77,11 @@ func LoadListeners(file string, config *ProxyProtocolConfig) (*ProxyListenerConf
 		cListener.ProtocolDiscoveryTimeout = time.Duration(cJSONSingle.ProtocolDiscoveryTimeout) * time.Second
 		cListener.config = new(ProxyProtocolConfig)
 		
-		cListener.config.LINE_PROTOCOLS_REGEXP = make(map[string]*regexp.Regexp)
-		cListener.config.LINE_PROTOCOLS_LITERAL = make(map[string][]int)
-		cListener.config.RAW_PROTOCOLS_REGEXP = make(map[string]*regexp.Regexp)
-		cListener.config.RAW_PROTOCOLS_LITERAL = make(map[string][]int)
-		
-		for protocol, _ := range cJSONSingle.ProtocolHosts {
-			a, ok := config.LINE_PROTOCOLS_REGEXP[protocol]
+		cListener.config.Matchers = make([]ProtocolMatcher, 0)
+		for _, matcher := range config.Matchers {
+			_, ok := cJSONSingle.ProtocolHosts[matcher.GetProtocol()]
 			if ok {
-				cListener.config.LINE_PROTOCOLS_REGEXP[protocol] = a
-			}
-			b,ok := config.LINE_PROTOCOLS_LITERAL[protocol]
-			if ok {
-				cListener.config.LINE_PROTOCOLS_LITERAL[protocol] = b
-			}
-			c, ok := config.RAW_PROTOCOLS_REGEXP[protocol]
-			if ok {
-				cListener.config.RAW_PROTOCOLS_REGEXP[protocol] = c
-			}
-			d, ok := config.RAW_PROTOCOLS_LITERAL[protocol]
-			if ok {
-				cListener.config.RAW_PROTOCOLS_LITERAL[protocol] = d
+				cListener.config.Matchers = append(cListener.config.Matchers, matcher)
 			}
 		}
 	}
@@ -271,48 +254,22 @@ func (p *ProxyListener) whichProtocolIs(data []byte) *string {
 		}
 	}
 	
-	if hasNewline {
-		dataLen = len(firstLine)
-		for protocol,literal := range p.config.LINE_PROTOCOLS_LITERAL {
-			if dataLen < len(literal) {
-				continue
-			}
-			literalIsValid := true
-			for i, b := range literal {
-				if b >= 0 && firstLine[i] != byte(b) {
-					literalIsValid = false
-					break
+	for _, matcher := range p.config.Matchers {
+		var _matchData []byte
+		switch(matcher.GetTarget()) {
+			case "line": {
+				if !hasNewline {
+					continue
 				}
+				_matchData = firstLine
 			}
-			if literalIsValid {
-				return &protocol
-			}
-		}
-		for protocol,regexp := range p.config.LINE_PROTOCOLS_REGEXP {
-			if regexp.Match(firstLine) {
-				return &protocol
+			case "raw": {
+				_matchData = data
 			}
 		}
-	}
-	
-	for protocol,literal := range p.config.RAW_PROTOCOLS_LITERAL {
-		if dataLen < len(literal) {
-			continue
-		}
-		literalIsValid := true
-		for i, b := range literal {
-			if b >= 0 && data[i] != byte(b) {
-				literalIsValid = false
-				break
-			}
-		}
-		if literalIsValid {
-			return &protocol
-		}
-	}
-	for protocol,regexp := range p.config.RAW_PROTOCOLS_REGEXP {
-		if regexp.Match(data) {
-			return &protocol
+		if matcher.Matches(_matchData) {
+			proto := matcher.GetProtocol()
+			return &proto
 		}
 	}
 	
