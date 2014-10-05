@@ -14,16 +14,16 @@
 		"FallbackProtocol": "telnet",
 		"ListenerAddress": "unix+ssl:///tmp/muxproxy_ssl",
 		"ProtocolDiscoveryTimeout": 3,
-		"Tls": {
-			[
+		"Tls": [
+			{
 				"Host": "example.org",
 				"Certificate": "/etc/ssl/snakeoil.crt",
-				"PrivateKey": "/etc/ssl/snakeoil.key",
-			]
-		},
+				"PrivateKey": "/etc/ssl/snakeoil.key"
+			}
+		],
 		"ProtocolHosts": {
-			"http": "tcp+ssl[http_send_x_forwarded_for]://1.2.3.4:443"},
-			"ssh": "tcp://1.2.3.4:22"},
+			"http": "tcp+ssl[http_send_x_forwarded_for]://1.2.3.4:443",
+			"ssh": "tcp://1.2.3.4:22",
 			"telnet": "tcp://1.2.3.4:23"
 		}
 	}
