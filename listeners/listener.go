@@ -66,9 +66,9 @@ func (p *ProxyListener) Start() {
 		}
 		
 		if p.Tls != nil {
-			go p.handleConnection(tls.Server(conn, p.Tls))
+			go HandleNewConnection(p, tls.Server(conn, p.Tls))
 		} else {
-			go p.handleConnection(conn)
+			go HandleNewConnection(p, conn)
 		}
 	}
 }

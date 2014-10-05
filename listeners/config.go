@@ -104,6 +104,7 @@ func Load(file string, config *protocols.ProxyProtocolConfig) (*ProxyListenerCon
 
 func (c *ProxyListenerConfig) Start() {
 	for _,listener := range c.Listeners {
-		go listener.Start()
+		realListener := listener
+		go realListener.Start()
 	}
 }

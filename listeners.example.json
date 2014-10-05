@@ -12,7 +12,7 @@
 	},
 	{
 		"FallbackProtocol": "telnet",
-		"ListenerAddress": "unix+ssl:///tmp/muxproxy_ssl",
+		"ListenerAddress": "unix+ssl[send_real_ip]:///tmp/muxproxy_ssl",
 		"ProtocolDiscoveryTimeout": 3,
 		"Tls": [
 			{

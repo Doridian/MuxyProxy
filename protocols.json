@@ -22,5 +22,5 @@
 		"Type": "regex",
 		"Target": "line",
 		"Value": "(?i)^(user|nick) "
-	}		
+	}
 ]
