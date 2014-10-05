@@ -1,9 +1,5 @@
 package protocols
 
-import (
-	"regexp"
-)
-
 type ProtocolMatcher interface {
 	Matches(data []byte) bool
 	
@@ -33,32 +29,4 @@ func (p *protocolMatcherBase) setTarget(target string) {
 
 func (p *protocolMatcherBase) setProtocol(protocol string) {
 	p.protocol = protocol
-}
-
-//Regexp matcher
-type protocolMatcherRegexp struct {
-	protocolMatcherBase
-	regexp *regexp.Regexp
-}
-
-func (p *protocolMatcherRegexp) Matches(data []byte) bool {
-	return p.regexp.Match(data)
-}
-
-//Literal / pattern matcher
-type protocolMatcherLiteral struct {
-	protocolMatcherBase
-	matchPattern []int
-}
-
-func (p *protocolMatcherLiteral) Matches(data []byte) bool {
-	if len(data) < len(p.matchPattern) {
-		return false
-	}
-	for i, b := range p.matchPattern {
-		if b >= 0 && data[i] != byte(b) {
-			return false
-		}
-	}
-	return true
 }

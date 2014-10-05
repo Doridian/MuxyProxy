@@ -18,7 +18,7 @@ func literalMatchFromString(str string) []int {
 	return ret
 }
 
-func literalMatchFromArray(array []interface{}) []int {
+func literalMatchFromJSONArray(array []interface{}) []int {
 	valueInts := make([]int, len(array))
 	for i,valueIface := range array {
 		valueInts[i] = int(valueIface.(float64))
@@ -61,7 +61,7 @@ func Load(fileName string) (*ProxyProtocolConfig, error) {
 			}
 			case "bytes": {
 				_matcher := new(protocolMatcherLiteral)
-				_matcher.matchPattern = literalMatchFromArray(protocolConfig.Value.([]interface{}))
+				_matcher.matchPattern = literalMatchFromJSONArray(protocolConfig.Value.([]interface{}))
 				matcher = _matcher
 			}
 			case "string": {
