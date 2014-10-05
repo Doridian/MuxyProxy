@@ -15,6 +15,7 @@ import (
 var connectionIDAtomic = new(uint64)
 
 var htmlEndingDelimeters = [][]byte{[]byte("\r\n\r\n"),[]byte("\n\n")}
+var muxyProxyHeader = []byte{0xFF,9,'M','u','x','y','P','r','o','x','y'}
 
 func (p *ProxyListener) readConnUntil(client net.Conn, headBytes *[]byte, delimeters [][]byte) bool {
 	pos := len(*headBytes)
@@ -135,7 +136,8 @@ func (p *ProxyListener) handleConnection(client net.Conn) {
 		
 		if protocolHost.Options["send_real_ip"] {
 			ipData := remoteIP
-			server.Write([]byte{0xFF,9,'M','u','x','y','P','r','o','x','y',byte(len(ipData))})
+			server.Write(muxyProxyHeader)
+			server.Write([]byte{byte(len(ipData))})
 			server.Write(ipData)
 		}
 	}
