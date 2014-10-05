@@ -22,5 +22,11 @@
 		"Type": "regex",
 		"Target": "line",
 		"Value": "(?i)^(user|nick) "
+	},
+	{
+		"Protocol": "terraria",
+		"Type": "bytes",
+		"Target": "raw",
+		"Value": [15, 1, -1, 54, 65, 72, 72, 61, 72, 69, 61]
 	}		
 ]
