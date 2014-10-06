@@ -12,11 +12,11 @@ import (
 type ProxyListener struct {
 	FallbackProtocol *string
 	
-	ListenerAddress utils.FullAddress
+	ListenerAddress utils.AddressURL
 
 	Tls *tls.Config
 	
-	ProtocolHosts map[string]utils.FullAddress
+	ProtocolHosts map[string]utils.AddressURL
 	
 	ProtocolDiscoveryTimeout time.Duration
 	config *protocols.ProxyProtocolConfig

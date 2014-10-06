@@ -7,19 +7,19 @@ import (
 
 var addressURLRegex = regexp.MustCompile("^([^\\[:]+)(\\[[^\\]]+\\])?://(.+)$")
 
-type FullAddress struct {
+type AddressURL struct {
 	Host string
 	Protocol string
 	Options map[string]bool
 	Tls bool
 }
 
-func (f *FullAddress) IsTCP() bool {
+func (f *AddressURL) IsTCP() bool {
 	return f.Protocol == "tcp" || f.Protocol == "tcp4" || f.Protocol == "tcp6"
 }
 
-func DecodeAddressURL(url string) FullAddress {
-	var ret FullAddress
+func DecodeAddressURL(url string) AddressURL {
+	var ret AddressURL
 	ret.Host = url
 	ret.Protocol = "tcp"
 	ret.Tls = false

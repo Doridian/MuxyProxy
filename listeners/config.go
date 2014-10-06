@@ -81,7 +81,7 @@ func Load(file string, config *protocols.ProxyProtocolConfig) (*ProxyListenerCon
 		cListener.FallbackProtocol = cJSONSingle.FallbackProtocol
 		cListener.ListenerAddress = utils.DecodeAddressURL(cJSONSingle.ListenerAddress)
 		
-		cListener.ProtocolHosts = make(map[string]utils.FullAddress)
+		cListener.ProtocolHosts = make(map[string]utils.AddressURL)
 		for protocol, addressURL := range cJSONSingle.ProtocolHosts {
 			cListener.ProtocolHosts[protocol] = utils.DecodeAddressURL(addressURL)
 		}
