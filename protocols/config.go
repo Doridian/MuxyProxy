@@ -1,9 +1,9 @@
 package protocols
 
 import (
-	"regexp"
-	"os"
 	"encoding/json"
+	"os"
+	"regexp"
 )
 
 type ProxyProtocolConfig struct {
@@ -12,7 +12,7 @@ type ProxyProtocolConfig struct {
 
 func literalMatchFromString(str string) []int {
 	ret := make([]int, len(str))
-	for i,c := range str {
+	for i, c := range str {
 		ret[i] = int(c)
 	}
 	return ret
@@ -20,17 +20,17 @@ func literalMatchFromString(str string) []int {
 
 func literalMatchFromJSONArray(array []interface{}) []int {
 	valueInts := make([]int, len(array))
-	for i,valueIface := range array {
+	for i, valueIface := range array {
 		valueInts[i] = int(valueIface.(float64))
 	}
 	return valueInts
 }
 
 type protocolConfigJSON struct {
-	Type string
+	Type     string
 	Protocol string
-	Target string
-	Value interface{}
+	Target   string
+	Value    interface{}
 }
 
 func Load(fileName string) (*ProxyProtocolConfig, error) {
@@ -41,30 +41,33 @@ func Load(fileName string) (*ProxyProtocolConfig, error) {
 	fileReader, err := os.Open(fileName)
 	if err != nil {
 		return nil, err
-	}	
+	}
 	jsonReader := json.NewDecoder(fileReader)
 	err = jsonReader.Decode(&protocolsConfig)
 	fileReader.Close()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	c.Matchers = make([]ProtocolMatcher, len(protocolsConfig))
-	
+
 	for i, protocolConfig := range protocolsConfig {
 		var matcher ProtocolMatcher
 		switch protocolConfig.Type {
-			case "regex": {
+		case "regex":
+			{
 				_matcher := new(protocolMatcherRegexp)
 				_matcher.regexp = regexp.MustCompile(protocolConfig.Value.(string))
 				matcher = _matcher
 			}
-			case "bytes": {
+		case "bytes":
+			{
 				_matcher := new(protocolMatcherLiteral)
 				_matcher.matchPattern = literalMatchFromJSONArray(protocolConfig.Value.([]interface{}))
 				matcher = _matcher
 			}
-			case "string": {
+		case "string":
+			{
 				_matcher := new(protocolMatcherLiteral)
 				_matcher.matchPattern = literalMatchFromString(protocolConfig.Value.(string))
 				matcher = _matcher
@@ -74,6 +77,6 @@ func Load(fileName string) (*ProxyProtocolConfig, error) {
 		matcher.setTarget(protocolConfig.Target)
 		c.Matchers[i] = matcher
 	}
-	
+
 	return c, nil
 }

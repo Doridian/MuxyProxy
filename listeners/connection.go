@@ -1,37 +1,37 @@
 package listeners
 
 import (
-	"log"
-	"net"
-	"io"
-	"fmt"
-	"time"
-	"strings"
 	"bytes"
 	"crypto/tls"
+	"fmt"
+	"io"
+	"log"
+	"net"
+	"strings"
 	"sync/atomic"
+	"time"
 )
 
 var connectionIDAtomic = new(uint64)
 
-var htmlEndingDelimeters = [][]byte{[]byte("\r\n\r\n"),[]byte("\n\n")}
-var muxyProxyHeader = []byte{0xFF,9,'M','u','x','y','P','r','o','x','y'}
+var htmlEndingDelimeters = [][]byte{[]byte("\r\n\r\n"), []byte("\n\n")}
+var muxyProxyHeader = []byte{0xFF, 9, 'M', 'u', 'x', 'y', 'P', 'r', 'o', 'x', 'y'}
 
 type ProxyConnection struct {
+	ID       uint64
 	listener *ProxyListener
-	client net.Conn
-	server net.Conn
+	client   net.Conn
+	server   net.Conn
 	remoteIP net.IP
-	ID uint64
 }
 
 func HandleNewConnection(listener *ProxyListener, client net.Conn) {
 	c := new(ProxyConnection)
-	
+
 	c.ID = atomic.AddUint64(connectionIDAtomic, 1)
 	c.listener = listener
 	c.client = client
-	
+
 	if remoteAddrIP, ok := client.RemoteAddr().(*net.IPAddr); ok {
 		c.remoteIP = remoteAddrIP.IP
 	} else if remoteAddrTCP, ok := client.RemoteAddr().(*net.TCPAddr); ok {
@@ -39,15 +39,15 @@ func HandleNewConnection(listener *ProxyListener, client net.Conn) {
 	} else if remoteAddrUDP, ok := client.RemoteAddr().(*net.UDPAddr); ok {
 		c.remoteIP = remoteAddrUDP.IP
 	}
-	
+
 	c.handleConnection()
 }
 
 func (p *ProxyConnection) readConnUntil(headBytes *[]byte, delimeters [][]byte) bool {
 	pos := len(*headBytes)
-	
+
 	defer p.client.SetDeadline(time.Unix(0, 0))
-	
+
 	for {
 		for _, delim := range delimeters {
 			if bytes.HasSuffix(*headBytes, delim) {
@@ -66,13 +66,13 @@ func (p *ProxyConnection) readConnUntil(headBytes *[]byte, delimeters [][]byte) 
 
 func (p *ProxyConnection) handleConnection() {
 	defer p.client.Close()
-	
+
 	defer log.Printf("[L#%d] [C#%d] Closed", p.listener.ID, p.ID)
-	
+
 	log.Printf("[L#%d] [C#%d] Open from %v to %v", p.listener.ID, p.ID, p.remoteIP, p.client.LocalAddr())
-	
+
 	protocolPtr, headBytes := p.connectionDiscoverProtocol()
-	
+
 	var protocol string
 	if protocolPtr == nil {
 		if p.listener.FallbackProtocol == nil {
@@ -85,19 +85,19 @@ func (p *ProxyConnection) handleConnection() {
 		protocol = *protocolPtr
 		log.Printf("[L#%d] [C#%d] Protocol: %s", p.listener.ID, p.ID, protocol)
 	}
-	
+
 	protocolHost := p.listener.ProtocolHosts[protocol]
 	log.Printf("[L#%d] [C#%d] Connecting client to backend %s://%s (TLS: %t)", p.listener.ID, p.ID, protocolHost.Protocol, protocolHost.Host, protocolHost.Tls)
-	
+
 	var err error
-	
+
 	if protocolHost.IsTCP() {
 		protocolAddr, err := net.ResolveTCPAddr(protocolHost.Protocol, protocolHost.Host)
 		if err != nil {
 			log.Printf("[L#%d] [C#%d] ERROR: Could not resolve backend: %v", p.listener.ID, p.ID, err)
 			return
 		}
-		
+
 		var _server *net.TCPConn
 		_server, err = net.DialTCP(protocolHost.Protocol, nil, protocolAddr)
 		if err == nil {
@@ -107,16 +107,16 @@ func (p *ProxyConnection) handleConnection() {
 	} else {
 		p.server, err = net.Dial(protocolHost.Protocol, protocolHost.Host)
 	}
-	
+
 	if protocolHost.Tls {
 		p.server = tls.Client(p.server, nil)
 	}
-	
+
 	if err != nil {
 		log.Printf("[L#%d] [C#%d] ERROR: Could not stablish backend connection: %v", p.listener.ID, p.ID, protocol, err)
 		return
 	}
-	
+
 	if p.remoteIP != nil {
 		if protocol == "http" && protocolHost.Options["http_send_x_forwarded_for"] && p.readConnUntil(&headBytes, htmlEndingDelimeters) {
 			if p.remoteIP != nil {
@@ -147,16 +147,16 @@ func (p *ProxyConnection) handleConnection() {
 				headBytes = strBytes
 			}
 		}
-		
+
 		if protocolHost.Options["send_real_ip"] {
 			p.server.Write(muxyProxyHeader)
 			p.server.Write([]byte{byte(len(p.remoteIP))})
 			p.server.Write(p.remoteIP)
 		}
 	}
-	
+
 	p.server.Write(headBytes)
-	
+
 	go initiateCopy(p.server, p.client)
 	initiateCopy(p.client, p.server)
 }

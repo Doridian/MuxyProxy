@@ -1,10 +1,10 @@
 package main
 
 import (
+	"github.com/Doridian/MuxyProxy/listeners"
+	"github.com/Doridian/MuxyProxy/protocols"
 	"log"
 	"time"
-	"github.com/Doridian/MuxyProxy/protocols"
-	"github.com/Doridian/MuxyProxy/listeners"
 )
 
 func main() {

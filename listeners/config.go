@@ -1,69 +1,66 @@
 package listeners
 
 import (
-	"time"
-	"os"
-	"log"
-	"sync/atomic"
 	"crypto/tls"
 	"encoding/json"
-	"github.com/Doridian/MuxyProxy/utils"
 	"github.com/Doridian/MuxyProxy/protocols"
+	"github.com/Doridian/MuxyProxy/utils"
+	"log"
+	"os"
+	"sync/atomic"
+	"time"
 )
 
 var _PROTOCOL_DEBUG = true
 
 type ProxyListenerConfig struct {
-	Listeners []ProxyListener	
-	config *protocols.ProxyProtocolConfig
+	Listeners []ProxyListener
+	config    *protocols.ProxyProtocolConfig
 }
 
 type proxyListenerJSON struct {
-	ProtocolHosts map[string]string
-	
-	FallbackProtocol *string
-	
-	ListenerAddress string
-	
-	Tls *[]ProxyTlsConfig
+	ProtocolHosts            map[string]string
+	FallbackProtocol         *string
+	ListenerAddress          string
+	Tls                      *[]ProxyTlsConfig
 	ProtocolDiscoveryTimeout float64
 }
 
 type ProxyTlsConfig struct {
-	Host string
+	Host        string
 	Certificate string
-	PrivateKey string
+	PrivateKey  string
 }
 
 var listenerIDAtomic = new(uint64)
 
 func Load(file string, config *protocols.ProxyProtocolConfig) (*ProxyListenerConfig, error) {
 	var cJSON []proxyListenerJSON
-	
+
 	fileReader, err := os.Open(file)
 	if err != nil {
 		return nil, err
-	}	
+	}
 	jsonReader := json.NewDecoder(fileReader)
 	err = jsonReader.Decode(&cJSON)
 	fileReader.Close()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	c := new(ProxyListenerConfig)
 	c.Listeners = make([]ProxyListener, len(cJSON))
 	for i, cJSONSingle := range cJSON {
 		cListener := &c.Listeners[i]
 		cListener.ID = atomic.AddUint64(listenerIDAtomic, 1)
-		
-		if cJSONSingle.FallbackProtocol != nil  {
+
+		if cJSONSingle.FallbackProtocol != nil {
 			if _, ok := cJSONSingle.ProtocolHosts[*cJSONSingle.FallbackProtocol]; !ok {
 				log.Fatalf("Could not load listener. Fallback protocol of %s specified but no handler present", *cJSONSingle.FallbackProtocol)
 				continue
 			}
 		}
-		
+
 		if cJSONSingle.Tls != nil {
 			cListener.Tls = new(tls.Config)
 			for _, tlsHost := range *cJSONSingle.Tls {
@@ -77,18 +74,18 @@ func Load(file string, config *protocols.ProxyProtocolConfig) (*ProxyListenerCon
 		} else {
 			cListener.Tls = nil
 		}
-		
+
 		cListener.FallbackProtocol = cJSONSingle.FallbackProtocol
 		cListener.ListenerAddress = utils.DecodeAddressURL(cJSONSingle.ListenerAddress)
-		
+
 		cListener.ProtocolHosts = make(map[string]utils.AddressURL)
 		for protocol, addressURL := range cJSONSingle.ProtocolHosts {
 			cListener.ProtocolHosts[protocol] = utils.DecodeAddressURL(addressURL)
 		}
-		
+
 		cListener.ProtocolDiscoveryTimeout = time.Duration(cJSONSingle.ProtocolDiscoveryTimeout) * time.Second
 		cListener.config = new(protocols.ProxyProtocolConfig)
-		
+
 		cListener.config.Matchers = make([]protocols.ProtocolMatcher, 0)
 		for _, matcher := range config.Matchers {
 			_, ok := cJSONSingle.ProtocolHosts[matcher.GetProtocol()]
@@ -98,12 +95,12 @@ func Load(file string, config *protocols.ProxyProtocolConfig) (*ProxyListenerCon
 		}
 	}
 	c.config = config
-	
+
 	return c, nil
 }
 
 func (c *ProxyListenerConfig) Start() {
-	for _,listener := range c.Listeners {
+	for _, listener := range c.Listeners {
 		realListener := listener
 		go realListener.Start()
 	}

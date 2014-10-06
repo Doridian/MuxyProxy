@@ -2,16 +2,16 @@ package protocols
 
 type ProtocolMatcher interface {
 	Matches(data []byte) bool
-	
+
 	GetTarget() string
 	GetProtocol() string
-	
+
 	setProtocol(protocol string)
 	setTarget(target string)
 }
 
 type protocolMatcherBase struct {
-	target string
+	target   string
 	protocol string
 }
 
