@@ -55,7 +55,7 @@ func Load(file string, config *protocols.ProxyProtocolConfig) (*ProxyListenerCon
 	c.Listeners = make([]ProxyListener, len(cJSON))
 	for i, cJSONSingle := range cJSON {
 		cListener := &c.Listeners[i]
-		cListener.listenerID = atomic.AddUint64(listenerIDAtomic, 1)
+		cListener.ID = atomic.AddUint64(listenerIDAtomic, 1)
 		
 		if cJSONSingle.FallbackProtocol != nil  {
 			if _, ok := cJSONSingle.ProtocolHosts[*cJSONSingle.FallbackProtocol]; !ok {
@@ -69,7 +69,7 @@ func Load(file string, config *protocols.ProxyProtocolConfig) (*ProxyListenerCon
 			for _, tlsHost := range *cJSONSingle.Tls {
 				cert, err := tls.LoadX509KeyPair(tlsHost.Certificate, tlsHost.PrivateKey)
 				if err != nil {
-					log.Fatalf("[L#%d] Could not load keypair: %v", cListener.listenerID, err)
+					log.Fatalf("[L#%d] Could not load keypair: %v", cListener.ID, err)
 					continue
 				}
 				cListener.Tls.Certificates = append(cListener.Tls.Certificates, cert)

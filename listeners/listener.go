@@ -21,7 +21,7 @@ type ProxyListener struct {
 	ProtocolDiscoveryTimeout time.Duration
 	config *protocols.ProxyProtocolConfig
 	
-	listenerID uint64
+	ID uint64
 }
 
 func (p *ProxyListener) Start() {
@@ -32,7 +32,7 @@ func (p *ProxyListener) Start() {
 	if p.ListenerAddress.IsTCP() {
 		listenerAddr, err := net.ResolveTCPAddr(p.ListenerAddress.Protocol, p.ListenerAddress.Host)
 		if err != nil {
-			log.Printf("[L#%d] Could not resolve listener: %v", p.listenerID, err)
+			log.Printf("[L#%d] Could not resolve listener: %v", p.ID, err)
 			return
 		}
 		tcpListener, err = net.ListenTCP(p.ListenerAddress.Protocol, listenerAddr)
@@ -41,12 +41,12 @@ func (p *ProxyListener) Start() {
 	}
 	
 	if err != nil {
-		log.Printf("[L#%d] Could not listen: %v", p.listenerID, err)
+		log.Printf("[L#%d] Could not listen: %v", p.ID, err)
 		return
 	}
 	
-	log.Printf("[L#%d] Started listening on %s://%s (TLS: %t)", p.listenerID, p.ListenerAddress.Protocol, p.ListenerAddress.Host, p.ListenerAddress.Tls)
-	defer log.Printf("[L#%d] Stopped listener", p.listenerID)
+	log.Printf("[L#%d] Started listening on %s://%s (TLS: %t)", p.ID, p.ListenerAddress.Protocol, p.ListenerAddress.Host, p.ListenerAddress.Tls)
+	defer log.Printf("[L#%d] Stopped listener", p.ID)
 	
 	for {
 		var conn net.Conn
@@ -61,7 +61,7 @@ func (p *ProxyListener) Start() {
 			conn, err = listener.Accept()
 		}
 		if err != nil {
-			log.Printf("[L#%d] Accept error: %v", p.listenerID, err)
+			log.Printf("[L#%d] Accept error: %v", p.ID, err)
 			continue
 		}
 		

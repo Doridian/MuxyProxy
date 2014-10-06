@@ -25,7 +25,7 @@ func (p *ProxyConnection) whichProtocolIs(data []byte, dataLen int) (*string, []
 		p.remoteIP = data[basePos:basePos+ipLen]
 		data = data[basePos+ipLen:]
 		dataLen -= basePos+ipLen
-		log.Printf("[L#%d] [C#%d] Forward packet got %v", p.listener.listenerID, p.connectionID, p.remoteIP)
+		log.Printf("[L#%d] [C#%d] Forward packet got %v", p.listener.ID, p.ID, p.remoteIP)
 	}
 
 	hasNewline := false
